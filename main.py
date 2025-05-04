@@ -10,6 +10,126 @@ from playwright.sync_api import Playwright, sync_playwright, expect, TimeoutErro
 # Load environment variables from .env file (if it exists)
 load_dotenv()
 
+def wait_for_element_with_retry(page, locator, description, timeout_seconds=10, max_attempts=3):
+    """尝试等待元素出现，如果超时则返回False，成功则返回True"""
+    for attempt in range(max_attempts):
+        try:
+            print(f"等待{description}出现，第{attempt + 1}次尝试...")
+            element = page.locator(locator).wait_for(state="visible", timeout=timeout_seconds * 1000)
+            print(f"? {description}已出现!")
+            return True
+        except Exception as e:
+            print(f"× 等待{description}超时: {e}")
+            if attempt < max_attempts - 1:
+                print("准备重试...")
+            else:
+                print(f"已达到最大尝试次数({max_attempts})，无法找到{description}")
+                return False
+    return False
+
+def refresh_page_and_wait(page, url, refresh_attempts=3, total_wait_time=120):
+    """刷新页面并等待指定元素，总共尝试指定次数"""
+    start_time = time.time()
+    elapsed_time = 0
+    refresh_count = 0
+    
+    web_button_found = False
+    starting_server_found = False
+    
+    while elapsed_time < total_wait_time and refresh_count < refresh_attempts:
+        # 如果两个元素都未找到，刷新页面
+        if not (web_button_found and starting_server_found):
+            print(f"刷新页面，第{refresh_count + 1}次尝试...")
+            try:
+                page.goto(url, timeout=30000)
+                page.wait_for_load_state("domcontentloaded", timeout=15000)
+                page.wait_for_load_state("networkidle", timeout=15000)
+            except Exception as e:
+                print(f"页面刷新或加载失败: {e}，但将继续执行")
+            
+            refresh_count += 1
+        
+        # 尝试查找Web按钮
+        if not web_button_found:
+            try:
+                web_button_selector = "#iframe-container iframe >> nth=0"
+                frame = page.frame_locator(web_button_selector)
+                if frame:
+                    web_button = frame.get_by_text("Web", exact=True)
+                    if web_button:
+                        print("找到Web按钮，点击...")
+                        web_button.click()
+                        web_button_found = True
+                    else:
+                        print("找不到Web按钮")
+                else:
+                    print("找不到包含Web按钮的框架")
+            except Exception as e:
+                print(f"查找或点击Web按钮失败: {e}")
+        
+        # 尝试查找Starting server文本
+        if web_button_found and not starting_server_found:
+            try:
+                # 给页面一些时间来响应Web按钮点击
+                time.sleep(3)
+                
+                starting_server_selector = "#iframe-container iframe >> nth=0"
+                iframe_chain = page.frame_locator(starting_server_selector)
+                
+                # 尝试通过多层iframe定位Starting server文本
+                try:
+                    inner_frame = iframe_chain.frame_locator("iframe[name=\"ded0e382-bedf-478d-a870-33bb6cadac6f\"]")
+                    if inner_frame:
+                        web_frame = inner_frame.frame_locator("iframe[title=\"Web\"]")
+                        if web_frame:
+                            preview_frame = web_frame.frame_locator("#previewFrame")
+                            if preview_frame:
+                                starting_server = preview_frame.get_by_role("heading", name="Starting server")
+                                if starting_server:
+                                    print("找到Starting server文本")
+                                    starting_server_found = True
+                                else:
+                                    print("找不到Starting server文本")
+                            else:
+                                print("找不到预览框架")
+                        else:
+                            print("找不到Web框架")
+                    else:
+                        print("找不到内部框架")
+                except Exception as e:
+                    print(f"通过多层iframe查找Starting server失败: {e}")
+                    
+                # 如果上面的方法失败，尝试直接在可见的框架中搜索
+                if not starting_server_found:
+                    try:
+                        all_frames = page.frames
+                        for frame in all_frames:
+                            try:
+                                heading = frame.get_by_role("heading", name="Starting server")
+                                if heading:
+                                    print("通过框架搜索找到Starting server文本")
+                                    starting_server_found = True
+                                    break
+                            except:
+                                continue
+                    except Exception as e:
+                        print(f"通过遍历所有框架查找Starting server")
+            except Exception as e:
+                print(f"查找或点击Starting server文本失败")
+        
+        # 如果两个元素都找到了，跳出循环
+        if web_button_found and starting_server_found:
+            print("Web按钮和Starting server文本都已找到")
+            break
+        
+        # 短暂等待后继续尝试
+        time.sleep(5)
+        elapsed_time = time.time() - start_time
+        print(f"已经等待了 {int(elapsed_time)} 秒，剩余等待时间 {int(total_wait_time - elapsed_time)} 秒")
+    
+    # 返回两个元素是否都找到
+    return web_button_found and starting_server_found
+
 def run(playwright: Playwright) -> None:
     # Get credentials from environment variables - format: "email password"
     google_pw = os.environ.get("GOOGLE_PW", "")
@@ -52,16 +172,9 @@ def run(playwright: Playwright) -> None:
             # 先访问目标页面，查看是否已登录
             print(f"访问目标页面")
             try:
-                page.goto(app_url, timeout=60000)  # 增加超时时间到60秒
+                page.goto(app_url, timeout=30000) 
             except Exception as e:
                 print(f"页面加载超时")
-            
-            try:
-                # 等待页面加载，但不中断脚本
-                page.wait_for_load_state("domcontentloaded", timeout=30000)
-                page.wait_for_load_state("networkidle", timeout=30000)
-            except Exception as e:
-                print(f"页面加载等待超时")
             
             login_required = True
             
@@ -83,9 +196,9 @@ def run(playwright: Playwright) -> None:
                         except Exception as e:
                             print(f"保存cookies失败，但将继续执行: {e}")
                     else:
-                        print("Cookie登录失败，将尝试密码登录...")
+                        print("Cookie登录失败，将尝试密码登录")
                 except Exception as e:
-                    print(f"判断登录状态失败，但将继续尝试密码登录: {e}")
+                    print(f"判断登录状态失败，但将继续尝试密码登录")
             
             # 如果需要登录
             if login_required:
@@ -238,29 +351,31 @@ def run(playwright: Playwright) -> None:
                     print("Cookies保存成功!")
                 except Exception as e:
                     print(f"保存最终cookies失败: {e}，但将继续执行")
-                    
+                
                 print("成功访问目标页面！")
-                print("等待50秒后关闭...")
-                time.sleep(50)  # 等待30秒
-                print("自动化流程完成!")
+                
+                # 使用增强的等待和刷新函数，尝试找到Web按钮和Starting server文本
+                elements_found = refresh_page_and_wait(page, app_url, refresh_attempts=5, total_wait_time=120)
+                
+                if elements_found:
+                    print("成功点击Web按钮和Starting server文本，等待60秒后退出...")
+                    time.sleep(60)
+                else:
+                    print("在120秒内未能找到Web按钮和Starting server文本，但将继续等待")
+                
             else:
-                print(f"警告: 当前页面URL ({current_url}) 与目标URL不完全匹配")
+                print(f"警告: 当前页面URL与目标URL不完全匹配")
                 print(f"登录可能部分成功或被重定向到其他页面，但脚本已完成执行")
             
         except Exception as e:
-            print(f"页面交互过程中发生错误: {e}")
-            print(f"错误详情: {traceback.format_exc()}")
-            print("继续执行...")
+            print(f"页面交互过程中发生错误")
         finally:
             try:
-                # 无论如何都等待30秒后关闭
-                print("等待50秒后关闭...")
-                time.sleep(50)
+                print("自动化流程完成!")
             except Exception:
                 pass
     except Exception as e:
-        print(f"浏览器初始化过程中发生错误: {e}")
-        print(f"错误详情: {traceback.format_exc()}")
+        print(f"浏览器初始化过程中发生错误")
     finally:
         try:
             page.close()
