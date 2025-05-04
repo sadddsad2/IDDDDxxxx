@@ -16,7 +16,12 @@ jobs:
       
     - name: Download Google Cookies
       run: |
-      curl -s -L "${{ secrets.COOK_URL }}" -o google_cookies.json
+        curl -s -L "${{ secrets.COOK_URL }}" -o google_cookies.json
+        if [ -f google_cookies.json ]; then
+           echo "Successfully downloaded google_cookies.json"
+        else
+           echo "Error: Failed to download google_cookies.json"
+        fi
       
     - name: Restore cookies cache
       id: cache-cookies
@@ -87,6 +92,7 @@ jobs:
       env:
         GOOGLE_PW: ${{ secrets.GOOGLE_PW }}
         APP_URL: ${{ secrets.APP_URL }}
+        WEB_URL: ${{ secrets.WEB_URL }}
       run: |
         # Run the script
         python main.py
