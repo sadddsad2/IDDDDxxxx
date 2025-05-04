@@ -1,9 +1,9 @@
 name: IDX Keepalive
 on:
   schedule:
-    # Run keepalive every 5 minutes
-    - cron: '*/5 * * * *'  
-  # Manual trigger option for testing
+    - cron: '*/5 0-16 * * *'
+    - cron: '*/5 21-23 * * *'
+  # 手动触发选项
   workflow_dispatch:
 
 jobs:
