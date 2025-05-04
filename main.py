@@ -45,7 +45,7 @@ def refresh_page_and_wait(page, url, refresh_attempts=3, total_wait_time=120):
                 page.wait_for_load_state("domcontentloaded", timeout=15000)
                 page.wait_for_load_state("networkidle", timeout=15000)
             except Exception as e:
-                print(f"页面刷新或加载失败: {e}，但将继续执行")
+                print(f"页面刷新或加载失败")
             
             refresh_count += 1
         
