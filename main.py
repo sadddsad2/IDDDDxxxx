@@ -205,8 +205,8 @@ def run(playwright: Playwright) -> None:
                         print(f"跳转到登录页面失败，但将继续尝试")
                     
                     try:
-                        page.wait_for_load_state("domcontentloaded", timeout=30000)
-                        page.wait_for_load_state("networkidle", timeout=30000)
+                        page.wait_for_load_state("domcontentloaded", timeout=60000)
+                        page.wait_for_load_state("networkidle", timeout=60000)
                     except Exception as e:
                         print(f"等待页面加载状态失败，但将继续执行")
                 
@@ -334,8 +334,8 @@ def run(playwright: Playwright) -> None:
                 elements_found = refresh_page_and_wait(page, app_url, refresh_attempts=5, total_wait_time=120)
                 
                 if elements_found:
-                    print("成功点击Web按钮和Starting server文本，等待60秒后退出...")
-                    time.sleep(60)
+                    print("成功点击Web按钮和Starting server文本，等待20秒后退出...")
+                    time.sleep(20)
                 else:
                     print("在120秒内未能找到Web按钮和Starting server文本，但将继续等待")
                 
