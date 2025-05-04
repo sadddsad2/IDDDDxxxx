@@ -57,7 +57,7 @@ def refresh_page_and_wait(page, url, refresh_attempts=3, total_wait_time=240):
                 if frame:
                     web_button = frame.get_by_text("Web", exact=True)
                     if web_button:
-                        time.sleep(20)
+                        time.sleep(30)
                         print("找到Web按钮，点击...")
                         web_button.click()
                         web_button_found = True
