@@ -50,18 +50,18 @@ def run(playwright: Playwright) -> None:
         
         try:
             # 先访问目标页面，查看是否已登录
-            print(f"访问目标页面: {app_url}")
+            print(f"访问目标页面")
             try:
                 page.goto(app_url, timeout=60000)  # 增加超时时间到60秒
             except Exception as e:
-                print(f"页面加载超时，但将继续执行: {e}")
+                print(f"页面加载超时")
             
             try:
                 # 等待页面加载，但不中断脚本
                 page.wait_for_load_state("domcontentloaded", timeout=30000)
                 page.wait_for_load_state("networkidle", timeout=30000)
             except Exception as e:
-                print(f"页面加载等待超时，但将继续执行: {e}")
+                print(f"页面加载等待超时")
             
             login_required = True
             
@@ -96,13 +96,13 @@ def run(playwright: Playwright) -> None:
                     try:
                         page.goto(app_url, timeout=60000)
                     except Exception as e:
-                        print(f"跳转到登录页面失败，但将继续尝试: {e}")
+                        print(f"跳转到登录页面失败，但将继续尝试")
                     
                     try:
                         page.wait_for_load_state("domcontentloaded", timeout=30000)
                         page.wait_for_load_state("networkidle", timeout=30000)
                     except Exception as e:
-                        print(f"等待页面加载状态失败，但将继续执行: {e}")
+                        print(f"等待页面加载状态失败，但将继续执行")
                 
                 # 输入邮箱 - 使用try/except确保即使出错也继续
                 try:
@@ -119,7 +119,7 @@ def run(playwright: Playwright) -> None:
                             else:
                                 print("无法找到邮箱输入框，但将继续执行")
                         except Exception as e:
-                            print(f"填写邮箱失败: {e}，但将继续执行")
+                            print(f"填写邮箱失败，但将继续执行")
                     
                     # 尝试点击下一步按钮
                     try:
@@ -134,13 +134,13 @@ def run(playwright: Playwright) -> None:
                             else:
                                 print("无法找到下一步按钮，但将继续执行")
                     except Exception as e:
-                        print(f"点击下一步按钮失败: {e}，但将继续执行")
+                        print(f"点击下一步按钮失败，但将继续执行")
                     
                     # 等待密码输入框出现
                     try:
                         page.wait_for_selector('input[type="password"]', state="visible", timeout=20000)
                     except Exception as e:
-                        print(f"等待密码输入框超时: {e}，但将继续尝试")
+                        print(f"等待密码输入框超时，但将继续尝试")
                     
                     # 输入密码
                     print("输入密码...")
@@ -156,7 +156,7 @@ def run(playwright: Playwright) -> None:
                             else:
                                 print("无法找到密码输入框，但将继续执行")
                     except Exception as e:
-                        print(f"填写密码失败: {e}，但将继续执行")
+                        print(f"填写密码失败，但将继续执行")
                     
                     # 尝试点击下一步按钮
                     try:
@@ -171,14 +171,14 @@ def run(playwright: Playwright) -> None:
                             else:
                                 print("无法找到密码页面的下一步按钮，但将继续执行")
                     except Exception as e:
-                        print(f"点击密码页面的下一步按钮失败: {e}，但将继续执行")
+                        print(f"点击密码页面的下一步按钮失败，但将继续执行")
                     
                     # 等待登录完成并跳转
                     print("等待登录完成...")
                     try:
                         page.wait_for_load_state("networkidle", timeout=30000)
                     except Exception as e:
-                        print(f"等待网络空闲超时: {e}，但将继续执行")
+                        print(f"等待网络空闲超时，但将继续执行")
                     
                     # 使用与cookie登录相同的判断标准验证登录是否成功
                     current_url = page.url
@@ -200,7 +200,7 @@ def run(playwright: Playwright) -> None:
                     print(f"错误详情: {traceback.format_exc()}")
             
             # 无论是已登录还是刚登录，都跳转到目标URL
-            print(f"导航到目标页面: {app_url}")
+            print(f"导航到目标页面")
             try:
                 page.goto(app_url, timeout=60000)
             except Exception as e:
@@ -240,8 +240,8 @@ def run(playwright: Playwright) -> None:
                     print(f"保存最终cookies失败: {e}，但将继续执行")
                     
                 print("成功访问目标页面！")
-                print("等待30秒后关闭...")
-                time.sleep(30)  # 等待30秒
+                print("等待50秒后关闭...")
+                time.sleep(50)  # 等待30秒
                 print("自动化流程完成!")
             else:
                 print(f"警告: 当前页面URL ({current_url}) 与目标URL不完全匹配")
@@ -254,8 +254,8 @@ def run(playwright: Playwright) -> None:
         finally:
             try:
                 # 无论如何都等待30秒后关闭
-                print("等待30秒后关闭...")
-                time.sleep(30)
+                print("等待50秒后关闭...")
+                time.sleep(50)
             except Exception:
                 pass
     except Exception as e:
