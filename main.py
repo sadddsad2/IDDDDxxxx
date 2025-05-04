@@ -42,8 +42,8 @@ def refresh_page_and_wait(page, url, refresh_attempts=3, total_wait_time=240):
             print(f"刷新页面，第{refresh_count + 1}次尝试...")
             try:
                 page.goto(url, timeout=30000)
-                page.wait_for_load_state("domcontentloaded", timeout=30000)
-                page.wait_for_load_state("networkidle", timeout=30000)
+                page.wait_for_load_state("domcontentloaded", timeout=60000)
+                page.wait_for_load_state("networkidle", timeout=60000)
             except Exception as e:
                 print(f"页面刷新或加载失败: {e}，但将继续执行")
             
@@ -57,7 +57,7 @@ def refresh_page_and_wait(page, url, refresh_attempts=3, total_wait_time=240):
                 if frame:
                     web_button = frame.get_by_text("Web", exact=True)
                     if web_button:
-                        time.sleep(30)
+                        time.sleep(20)
                         print("找到Web按钮，点击...")
                         web_button.click()
                         web_button_found = True
