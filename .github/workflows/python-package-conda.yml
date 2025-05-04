@@ -53,16 +53,6 @@ jobs:
           echo "$playwright_version" > playwright.version
         fi
     
-    - name: Restore apt cache
-      id: cache-apt
-      uses: actions/cache/restore@v3
-      with:
-        path: /var/cache/apt
-        key: ${{ runner.os }}-apt-xvfb-${{ hashFiles('**/apt-packages.txt') || 'xvfb' }}
-        restore-keys: |
-          ${{ runner.os }}-apt-xvfb-
-          ${{ runner.os }}-apt-
-
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -81,11 +71,19 @@ jobs:
           echo "Using cached Playwright browsers"
         fi
       
-    - name: Run idx script
+
+    - name: Check WEB_URL Status
+      id: check_url_status
+      run: |
+        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L "${{ secrets.WEB_URL }}")
+        echo "WEB_URL status code: $HTTP_STATUS"
+
+    - name: Run Python Script on Non-200 Status
+      if: steps.check_url_status.outputs.status != '200'
       env:
-        # Credentials stored in GitHub Secrets
         GOOGLE_PW: ${{ secrets.GOOGLE_PW }}
         APP_URL: ${{ secrets.APP_URL }}
+        WEB_URL: ${{ secrets.WEB_URL }}
       run: |
         # Run the script
         python main.py
@@ -106,10 +104,4 @@ jobs:
       uses: actions/cache/save@v3
       with:
         path: ~/.cache/ms-playwright
-        key: ${{ runner.os }}-playwright-${{ hashFiles('**/playwright.version') }}
-        
-    - name: Save apt cache
-      uses: actions/cache/save@v3
-      with:
-        path: /var/cache/apt
-        key: ${{ runner.os }}-apt-xvfb-${{ hashFiles('**/apt-packages.txt') || 'xvfb' }}
+        key: ${{ runner.os }}-playwright-${{ hashFiles('**/playwright.version') }}        
