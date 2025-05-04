@@ -17,11 +17,6 @@ jobs:
     - name: Download Google Cookies
       run: |
       curl -s -L "${{ secrets.COOK_URL }}" -o google_cookies.json
-      if [ -f google_cookies.json ]; then
-        echo "Successfully downloaded google_cookies.json"
-      else
-        echo "Error: Failed to download google_cookies.json"
-      fi
       
     - name: Restore cookies cache
       id: cache-cookies
