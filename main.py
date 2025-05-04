@@ -4,11 +4,7 @@ import json
 import time
 import traceback
 from pathlib import Path
-from dotenv import load_dotenv
 from playwright.sync_api import Playwright, sync_playwright, expect, TimeoutError
-
-# Load environment variables from .env file (if it exists)
-load_dotenv()
 
 def wait_for_element_with_retry(page, locator, description, timeout_seconds=10, max_attempts=3):
     """尝试等待元素出现，如果超时则返回False，成功则返回True"""
@@ -150,7 +146,7 @@ def run(playwright: Playwright) -> None:
         return
     
     try:
-        browser = playwright.firefox.launch(headless=False)
+        browser = playwright.firefox.launch(headless=True)
         context = browser.new_context()
         
         # 尝试加载已保存的 cookies
