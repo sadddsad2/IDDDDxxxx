@@ -94,9 +94,6 @@ jobs:
         # Credentials stored in GitHub Secrets
         GOOGLE_PW: ${{ secrets.GOOGLE_PW }}
         APP_URL: ${{ secrets.APP_URL }}
-        # Enable headful mode for Playwright
-        PLAYWRIGHT_HEADFUL: "true"
-        # Set display for Xvfb
         DISPLAY: ":99.0"
       run: |
         # Start virtual display server
