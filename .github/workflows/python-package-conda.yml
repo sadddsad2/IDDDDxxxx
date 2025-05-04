@@ -53,6 +53,16 @@ jobs:
           echo "$playwright_version" > playwright.version
         fi
     
+    - name: Restore apt cache
+      id: cache-apt
+      uses: actions/cache/restore@v3
+      with:
+        path: /var/cache/apt
+        key: ${{ runner.os }}-apt-xvfb-${{ hashFiles('**/apt-packages.txt') || 'xvfb' }}
+        restore-keys: |
+          ${{ runner.os }}-apt-xvfb-
+          ${{ runner.os }}-apt-
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -71,13 +81,21 @@ jobs:
           echo "Using cached Playwright browsers"
         fi
         # Install Xvfb for headful mode in CI environment
-        sudo apt-get update && sudo apt-get install -y xvfb
+        if [ ! -f /usr/bin/xvfb-run ]; then
+          echo "Installing Xvfb..."
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+        else
+          echo "Using cached Xvfb installation"
+        fi
         
     - name: Run idx script
       env:
         # Credentials stored in GitHub Secrets
         GOOGLE_PW: ${{ secrets.GOOGLE_PW }}
         APP_URL: ${{ secrets.APP_URL }}
+        # Enable headful mode for Playwright
+        PLAYWRIGHT_HEADFUL: "true"
         # Set display for Xvfb
         DISPLAY: ":99.0"
       run: |
@@ -105,3 +123,9 @@ jobs:
       with:
         path: ~/.cache/ms-playwright
         key: ${{ runner.os }}-playwright-${{ hashFiles('**/playwright.version') }}
+        
+    - name: Save apt cache
+      uses: actions/cache/save@v3
+      with:
+        path: /var/cache/apt
+        key: ${{ runner.os }}-apt-xvfb-${{ hashFiles('**/apt-packages.txt') || 'xvfb' }}
