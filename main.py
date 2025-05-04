@@ -27,7 +27,7 @@ def wait_for_element_with_retry(page, locator, description, timeout_seconds=10, 
                 return False
     return False
 
-def refresh_page_and_wait(page, url, refresh_attempts=3, total_wait_time=120):
+def refresh_page_and_wait(page, url, refresh_attempts=3, total_wait_time=240):
     """刷新页面并等待指定元素，总共尝试指定次数"""
     start_time = time.time()
     elapsed_time = 0
@@ -42,10 +42,10 @@ def refresh_page_and_wait(page, url, refresh_attempts=3, total_wait_time=120):
             print(f"刷新页面，第{refresh_count + 1}次尝试...")
             try:
                 page.goto(url, timeout=30000)
-                page.wait_for_load_state("domcontentloaded", timeout=15000)
-                page.wait_for_load_state("networkidle", timeout=15000)
+                page.wait_for_load_state("domcontentloaded", timeout=30000)
+                page.wait_for_load_state("networkidle", timeout=30000)
             except Exception as e:
-                print(f"页面刷新或加载失败")
+                print(f"页面刷新或加载失败: {e}，但将继续执行")
             
             refresh_count += 1
         
@@ -57,6 +57,7 @@ def refresh_page_and_wait(page, url, refresh_attempts=3, total_wait_time=120):
                 if frame:
                     web_button = frame.get_by_text("Web", exact=True)
                     if web_button:
+                        time.sleep(20)
                         print("找到Web按钮，点击...")
                         web_button.click()
                         web_button_found = True
@@ -186,15 +187,7 @@ def run(playwright: Playwright) -> None:
                     if "idx.google.com" in current_url and "signin" not in current_url:
                         print("已经通过cookies登录成功!")
                         login_required = False
-                        
-                        # 即使通过cookie登录成功，也保存最新的cookies
-                        try:
-                            print("保存最新的cookies...")
-                            cookies = context.cookies()
-                            with open(cookies_path, 'w') as f:
-                                json.dump(cookies, f)
-                        except Exception as e:
-                            print(f"保存cookies失败，但将继续执行: {e}")
+
                     else:
                         print("Cookie登录失败，将尝试密码登录")
                 except Exception as e:
@@ -315,26 +308,9 @@ def run(playwright: Playwright) -> None:
             # 无论是已登录还是刚登录，都跳转到目标URL
             print(f"导航到目标页面")
             try:
-                page.goto(app_url, timeout=60000)
+                page.goto(app_url, timeout=30000)
             except Exception as e:
-                print(f"跳转到目标页面失败: {e}，但将继续执行")
-            
-            # 等待页面完全加载，包括所有资源和AJAX请求
-            print("等待页面完全加载...")
-            try:
-                page.wait_for_load_state("domcontentloaded", timeout=30000)
-            except Exception as e:
-                print(f"等待DOM加载完成超时: {e}，但将继续执行")
-            
-            try:
-                page.wait_for_load_state("networkidle", timeout=30000)
-            except Exception as e:
-                print(f"等待网络空闲超时: {e}，但将继续执行")
-            
-            try:
-                page.wait_for_load_state("load", timeout=30000)
-            except Exception as e:
-                print(f"等待页面完全加载超时: {e}，但将继续执行")
+                print(f"跳转到目标页面失败,但将继续执行")
             
             # 最终验证是否成功访问目标URL
             current_url = page.url
