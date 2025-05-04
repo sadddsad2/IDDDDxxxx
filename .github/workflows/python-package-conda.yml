@@ -76,6 +76,7 @@ jobs:
       id: check_url_status
       run: |
         HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L "${{ secrets.WEB_URL }}")
+        echo "status=$HTTP_STATUS" >> $GITHUB_OUTPUT
         echo "WEB_URL status code: $HTTP_STATUS"
 
     - name: Run Python Script on Non-200 Status
