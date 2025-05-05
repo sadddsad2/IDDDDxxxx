@@ -1,4 +1,4 @@
-name: idx-Keepalive 2小时
+name: IDX-Keepalive 2小时
 on:
   schedule:
     # UTC times equivalent to Beijing time (UTC+8)
