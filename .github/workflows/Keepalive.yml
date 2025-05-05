@@ -80,7 +80,7 @@ jobs:
           echo "Using cached Playwright browsers"
         fi
       
-    - name: Run Python Script on Non-200 Status
+    - name: Run Python Script
       env:
         GOOGLE_PW: ${{ secrets.GOOGLE_PW }}
         APP_URL: ${{ secrets.APP_URL }}
