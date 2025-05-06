@@ -146,7 +146,7 @@ def run(playwright: Playwright) -> None:
         return
     
     try:
-        browser = playwright.firefox.launch(headless=True)
+        browser = playwright.firefox.launch(headless=False)
         context = browser.new_context()
         
         # 尝试加载已保存的 cookies
@@ -206,100 +206,143 @@ def run(playwright: Playwright) -> None:
                     except Exception as e:
                         print(f"等待页面加载状态失败，但将继续执行")
                 
-                # 输入邮箱 - 使用try/except确保即使出错也继续
+                # 检查是否存在"Choose an account"页面
                 try:
-                    print("输入邮箱...")
-                    try:
-                        email_field = page.get_by_label("Email or phone")
-                        email_field.fill(email)
-                    except Exception:
-                        # 尝试备用方法查找邮箱输入框
+                    # 等待页面加载完成
+                    page.wait_for_load_state("domcontentloaded", timeout=10000)
+                    # 检查是否有"Choose an account"标题
+                    choose_account_visible = page.query_selector('text="Choose an account"')
+                    
+                    if choose_account_visible:
+                        print("检测到'Choose an account'页面，尝试选择账户...")
+                        
+                        # 尝试多种方法查找并点击包含用户邮箱的项目
                         try:
-                            email_field = page.query_selector('input[type="email"]')
-                            if email_field:
-                                email_field.fill(email)
+                            # 方法1: 直接通过邮箱文本查找
+                            email_account = page.get_by_text(email)
+                            if email_account:
+                                print(f"找到包含邮箱的账户，点击...")
+                                email_account.click()
+                                # 给页面一些时间响应点击
+                                page.wait_for_load_state("networkidle", timeout=10000)
                             else:
-                                print("无法找到邮箱输入框，但将继续执行")
+                                # 方法2: 通过div内容查找
+                                email_div = page.query_selector(f'div:has-text("{email}")')
+                                if email_div:
+                                    print(f"找到包含邮箱 的div，点击...")
+                                    email_div.click()
+                                    page.wait_for_load_state("networkidle", timeout=10000)
+                                else:
+                                    # 方法3: 点击第一个账户选项
+                                    print("未找到匹配的邮箱账户，尝试点击第一个选项...")
+                                    first_account = page.query_selector('.OVnw0d')
+                                    if first_account:
+                                        first_account.click()
+                                        page.wait_for_load_state("networkidle", timeout=10000)
+                                    else:
+                                        print("无法找到任何账户选项，将继续尝试输入密码...")
                         except Exception as e:
-                            print(f"填写邮箱失败，但将继续执行")
-                    
-                    # 尝试点击下一步按钮
-                    try:
-                        next_button = page.get_by_role("button", name="Next")
-                        if next_button:
-                            next_button.click()
-                        else:
-                            # 尝试备用方法查找下一步按钮
-                            next_button = page.query_selector('button[jsname="LgbsSe"]')
-                            if next_button:
-                                next_button.click()
-                            else:
-                                print("无法找到下一步按钮，但将继续执行")
-                    except Exception as e:
-                        print(f"点击下一步按钮失败，但将继续执行")
-                    
-                    # 等待密码输入框出现
-                    try:
-                        page.wait_for_selector('input[type="password"]', state="visible", timeout=20000)
-                    except Exception as e:
-                        print(f"等待密码输入框超时，但将继续尝试")
-                    
-                    # 输入密码
-                    print("输入密码...")
-                    try:
-                        password_field = page.get_by_label("Enter your password")
+                            print(f"选择账户失败: {e}，但将继续执行")
+                    else:
+                        print("没有检测到'Choose an account'页面，继续正常登录流程...")
+                        
+                        # 输入邮箱 - 使用try/except确保即使出错也继续
+                        try:
+                            print("输入邮箱...")
+                            try:
+                                email_field = page.get_by_label("Email or phone")
+                                email_field.fill(email)
+                            except Exception:
+                                # 尝试备用方法查找邮箱输入框
+                                try:
+                                    email_field = page.query_selector('input[type="email"]')
+                                    if email_field:
+                                        email_field.fill(email)
+                                    else:
+                                        print("无法找到邮箱输入框，但将继续执行")
+                                except Exception as e:
+                                    print(f"填写邮箱失败，但将继续执行")
+                            
+                            # 尝试点击下一步按钮
+                            try:
+                                next_button = page.get_by_role("button", name="Next")
+                                if next_button:
+                                    next_button.click()
+                                else:
+                                    # 尝试备用方法查找下一步按钮
+                                    next_button = page.query_selector('button[jsname="LgbsSe"]')
+                                    if next_button:
+                                        next_button.click()
+                                    else:
+                                        print("无法找到下一步按钮，但将继续执行")
+                            except Exception as e:
+                                print(f"点击下一步按钮失败，但将继续执行")
+                        except Exception as e:
+                            print(f"邮箱输入阶段失败: {e}，但将继续执行")
+                except Exception as e:
+                    print(f"检查'Choose an account'页面失败: {e}，继续常规登录流程")
+                
+                # 等待密码输入框出现
+                try:
+                    page.wait_for_selector('input[type="password"]', state="visible", timeout=20000)
+                    print("密码输入框已出现")
+                except Exception as e:
+                    print(f"等待密码输入框超时，但将继续尝试")
+                
+                # 输入密码
+                print("输入密码...")
+                try:
+                    password_field = page.get_by_label("Enter your password")
+                    if password_field:
+                        password_field.fill(password)
+                    else:
+                        # 尝试备用方法查找密码输入框
+                        password_field = page.query_selector('input[type="password"]')
                         if password_field:
                             password_field.fill(password)
                         else:
-                            # 尝试备用方法查找密码输入框
-                            password_field = page.query_selector('input[type="password"]')
-                            if password_field:
-                                password_field.fill(password)
-                            else:
-                                print("无法找到密码输入框，但将继续执行")
-                    except Exception as e:
-                        print(f"填写密码失败，但将继续执行")
-                    
-                    # 尝试点击下一步按钮
-                    try:
-                        next_button = page.get_by_role("button", name="Next")
+                            print("无法找到密码输入框，但将继续执行")
+                except Exception as e:
+                    print(f"填写密码失败，但将继续执行")
+                
+                # 尝试点击下一步按钮
+                try:
+                    next_button = page.get_by_role("button", name="Next")
+                    if next_button:
+                        next_button.click()
+                        print("提交密码")
+                        time.sleep(5)
+                    else:
+                        # 尝试备用方法查找下一步按钮
+                        next_button = page.query_selector('button[jsname="LgbsSe"]')
                         if next_button:
                             next_button.click()
                         else:
-                            # 尝试备用方法查找下一步按钮
-                            next_button = page.query_selector('button[jsname="LgbsSe"]')
-                            if next_button:
-                                next_button.click()
-                            else:
-                                print("无法找到密码页面的下一步按钮，但将继续执行")
-                    except Exception as e:
-                        print(f"点击密码页面的下一步按钮失败，但将继续执行")
-                    
-                    # 等待登录完成并跳转
-                    print("等待登录完成...")
-                    try:
-                        page.wait_for_load_state("networkidle", timeout=30000)
-                    except Exception as e:
-                        print(f"等待网络空闲超时，但将继续执行")
-                    
-                    # 使用与cookie登录相同的判断标准验证登录是否成功
-                    current_url = page.url
-                    if "idx.google.com" in current_url and "signin" not in current_url:
-                        print("密码登录成功!")
-                        
-                        # 保存cookies以便下次使用
-                        try:
-                            print("保存cookies以供下次使用...")
-                            cookies = context.cookies()
-                            with open(cookies_path, 'w') as f:
-                                json.dump(cookies, f)
-                        except Exception as e:
-                            print(f"保存cookies失败: {e}，但将继续执行")
-                    else:
-                        print(f"登录可能不成功，当前URL: {current_url}，但将继续执行")
+                            print("无法找到密码页面的下一步按钮，但将继续执行")
                 except Exception as e:
-                    print(f"登录过程中发生错误: {e}，但将继续执行")
-                    print(f"错误详情: {traceback.format_exc()}")
+                    print(f"点击密码页面的下一步按钮失败，但将继续执行")
+                
+                # 等待登录完成并跳转
+                try:
+                  page.goto(app_url, timeout=30000)
+                except Exception as e:
+                  print(f"跳转到目标页面失败,但将继续执行")
+                
+                # 使用与cookie登录相同的判断标准验证登录是否成功
+                current_url = page.url
+                if "idx.google.com" in current_url and "signin" not in current_url:
+                    print("密码登录成功!")
+                    
+                    # 保存cookies以便下次使用
+                    try:
+                        print("保存cookies以供下次使用...")
+                        cookies = context.cookies()
+                        with open(cookies_path, 'w') as f:
+                            json.dump(cookies, f)
+                    except Exception as e:
+                        print(f"保存cookies失败: {e}，但将继续执行")
+                else:
+                    print(f"登录可能不成功，当前URL: {current_url}，但将继续执行")
             
             # 无论是已登录还是刚登录，都跳转到目标URL
             print(f"导航到目标页面")
@@ -340,14 +383,16 @@ def run(playwright: Playwright) -> None:
                 print(f"登录可能部分成功或被重定向到其他页面，但脚本已完成执行")
             
         except Exception as e:
-            print(f"页面交互过程中发生错误")
+            print(f"页面交互过程中发生错误: {e}")
+            print(f"错误详情: {traceback.format_exc()}")
         finally:
             try:
                 print("自动化流程完成!")
             except Exception:
                 pass
     except Exception as e:
-        print(f"浏览器初始化过程中发生错误")
+        print(f"浏览器初始化过程中发生错误: {e}")
+        print(f"错误详情: {traceback.format_exc()}")
     finally:
         try:
             page.close()
