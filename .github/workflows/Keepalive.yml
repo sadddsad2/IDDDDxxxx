@@ -3,8 +3,8 @@ name: IDX-Keepalive 2小时
 on:
   schedule:
     # Beijing time is UTC+8, schedule in UTC
-    # Run at 6:00, 8:00, 10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00, 0:00 (Beijing time)
-    - cron: '0 22,0,2,4,6,8,10,12,14,16 * * *'
+    # Run at 6:00, 8:00, 10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00(Beijing time)
+    - cron: '0 22,0,2,4,6,8,10,12,14 * * *'
   # Manual trigger option
   workflow_dispatch:
 
