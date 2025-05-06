@@ -146,7 +146,7 @@ def run(playwright: Playwright) -> None:
         return
     
     try:
-        browser = playwright.firefox.launch(headless=False)
+        browser = playwright.firefox.launch(headless=True)
         context = browser.new_context()
         
         # 尝试加载已保存的 cookies
