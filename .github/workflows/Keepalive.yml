@@ -1,10 +1,11 @@
+
 name: IDX-Keepalive 2小时
 on:
   schedule:
-    # UTC times equivalent to Beijing time (UTC+8)
-    # Beijing 1:00-6:00 corresponds to UTC 17:00-22:00 of the previous day
-    - cron: '0 16,18,20,22,0,2,4,6,8,10,12,14 * * *'
-  # 手动触发选项
+    # Beijing time is UTC+8, schedule in UTC
+    # Run at 6:00, 8:00, 10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00, 0:00 (Beijing time)
+    - cron: '0 22,0,2,4,6,8,10,12,14,16 * * *'
+  # Manual trigger option
   workflow_dispatch:
 
 jobs:
