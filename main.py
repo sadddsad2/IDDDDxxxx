@@ -1,7 +1,6 @@
 import re
 import os
 import json
-import time
 import traceback
 from pathlib import Path
 from playwright.sync_api import Playwright, sync_playwright, expect, TimeoutError
@@ -25,14 +24,14 @@ def wait_for_element_with_retry(page, locator, description, timeout_seconds=10, 
 
 def refresh_page_and_wait(page, url, refresh_attempts=3, total_wait_time=240):
     """刷新页面并等待指定元素，总共尝试指定次数"""
-    start_time = time.time()
+    start_time = page.evaluate("() => Date.now()")
     elapsed_time = 0
     refresh_count = 0
     
     web_button_found = False
     starting_server_found = False
     
-    while elapsed_time < total_wait_time and refresh_count < refresh_attempts:
+    while elapsed_time < total_wait_time * 1000 and refresh_count < refresh_attempts:
         # 如果两个元素都未找到，刷新页面
         if not (web_button_found and starting_server_found):
             print(f"刷新页面，第{refresh_count + 1}次尝试...")
@@ -53,7 +52,7 @@ def refresh_page_and_wait(page, url, refresh_attempts=3, total_wait_time=240):
                 if frame:
                     web_button = frame.get_by_text("Web", exact=True)
                     if web_button:
-                        time.sleep(20)
+                        page.wait_for_timeout(20000)  # 等待20秒
                         print("找到Web按钮，点击...")
                         web_button.click()
                         web_button_found = True
@@ -68,7 +67,7 @@ def refresh_page_and_wait(page, url, refresh_attempts=3, total_wait_time=240):
         if web_button_found and not starting_server_found:
             try:
                 # 给页面一些时间来响应Web按钮点击
-                time.sleep(3)
+                page.wait_for_timeout(3000)  # 等待3秒
                 
                 starting_server_selector = "#iframe-container iframe >> nth=0"
                 iframe_chain = page.frame_locator(starting_server_selector)
@@ -110,9 +109,9 @@ def refresh_page_and_wait(page, url, refresh_attempts=3, total_wait_time=240):
                             except:
                                 continue
                     except Exception as e:
-                        print(f"通过遍历所有框架查找Starting server")
+                        print(f"通过遍历所有框架查找Starting server失败: {e}")
             except Exception as e:
-                print(f"查找或点击Starting server文本失败")
+                print(f"查找或点击Starting server文本失败: {e}")
         
         # 如果两个元素都找到了，跳出循环
         if web_button_found and starting_server_found:
@@ -120,9 +119,9 @@ def refresh_page_and_wait(page, url, refresh_attempts=3, total_wait_time=240):
             break
         
         # 短暂等待后继续尝试
-        time.sleep(5)
-        elapsed_time = time.time() - start_time
-        print(f"已经等待了 {int(elapsed_time)} 秒，剩余等待时间 {int(total_wait_time - elapsed_time)} 秒")
+        page.wait_for_timeout(5000)  # 等待5秒
+        elapsed_time = page.evaluate("() => Date.now()") - start_time
+        print(f"已经等待了 {int(elapsed_time/1000)} 秒，剩余等待时间 {int(total_wait_time - elapsed_time/1000)} 秒")
     
     # 返回两个元素是否都找到
     return web_button_found and starting_server_found
@@ -144,6 +143,10 @@ def run(playwright: Playwright) -> None:
         print("例如:")
         print("  export GOOGLE_PW='your.email@gmail.com your_password'")
         return
+    
+    browser = None
+    context = None
+    page = None
     
     try:
         browser = playwright.firefox.launch(headless=True)
@@ -171,7 +174,7 @@ def run(playwright: Playwright) -> None:
             try:
                 page.goto(app_url, timeout=30000) 
             except Exception as e:
-                print(f"页面加载超时")
+                print(f"页面加载超时: {e}")
             
             login_required = True
             
@@ -187,7 +190,7 @@ def run(playwright: Playwright) -> None:
                     else:
                         print("Cookie登录失败，将尝试密码登录")
                 except Exception as e:
-                    print(f"判断登录状态失败，但将继续尝试密码登录")
+                    print(f"判断登录状态失败: {e}，但将继续尝试密码登录")
             
             # 如果需要登录
             if login_required:
@@ -198,13 +201,13 @@ def run(playwright: Playwright) -> None:
                     try:
                         page.goto(app_url, timeout=60000)
                     except Exception as e:
-                        print(f"跳转到登录页面失败，但将继续尝试")
+                        print(f"跳转到登录页面失败: {e}，但将继续尝试")
                     
                     try:
                         page.wait_for_load_state("domcontentloaded", timeout=60000)
                         page.wait_for_load_state("networkidle", timeout=60000)
                     except Exception as e:
-                        print(f"等待页面加载状态失败，但将继续执行")
+                        print(f"等待页面加载状态失败: {e}，但将继续执行")
                 
                 # 检查是否存在"Choose an account"页面
                 try:
@@ -229,7 +232,7 @@ def run(playwright: Playwright) -> None:
                                 # 方法2: 通过div内容查找
                                 email_div = page.query_selector(f'div:has-text("{email}")')
                                 if email_div:
-                                    print(f"找到包含邮箱 的div，点击...")
+                                    print(f"找到包含邮箱的div，点击...")
                                     email_div.click()
                                     page.wait_for_load_state("networkidle", timeout=10000)
                                 else:
@@ -261,7 +264,7 @@ def run(playwright: Playwright) -> None:
                                     else:
                                         print("无法找到邮箱输入框，但将继续执行")
                                 except Exception as e:
-                                    print(f"填写邮箱失败，但将继续执行")
+                                    print(f"填写邮箱失败: {e}，但将继续执行")
                             
                             # 尝试点击下一步按钮
                             try:
@@ -276,7 +279,7 @@ def run(playwright: Playwright) -> None:
                                     else:
                                         print("无法找到下一步按钮，但将继续执行")
                             except Exception as e:
-                                print(f"点击下一步按钮失败，但将继续执行")
+                                print(f"点击下一步按钮失败: {e}，但将继续执行")
                         except Exception as e:
                             print(f"邮箱输入阶段失败: {e}，但将继续执行")
                 except Exception as e:
@@ -287,7 +290,7 @@ def run(playwright: Playwright) -> None:
                     page.wait_for_selector('input[type="password"]', state="visible", timeout=20000)
                     print("密码输入框已出现")
                 except Exception as e:
-                    print(f"等待密码输入框超时，但将继续尝试")
+                    print(f"等待密码输入框超时: {e}，但将继续尝试")
                 
                 # 输入密码
                 print("输入密码...")
@@ -303,7 +306,7 @@ def run(playwright: Playwright) -> None:
                         else:
                             print("无法找到密码输入框，但将继续执行")
                 except Exception as e:
-                    print(f"填写密码失败，但将继续执行")
+                    print(f"填写密码失败: {e}，但将继续执行")
                 
                 # 尝试点击下一步按钮
                 try:
@@ -311,7 +314,7 @@ def run(playwright: Playwright) -> None:
                     if next_button:
                         next_button.click()
                         print("提交密码")
-                        time.sleep(5)
+                        page.wait_for_timeout(5000)  # 等待5秒
                     else:
                         # 尝试备用方法查找下一步按钮
                         next_button = page.query_selector('button[jsname="LgbsSe"]')
@@ -320,13 +323,13 @@ def run(playwright: Playwright) -> None:
                         else:
                             print("无法找到密码页面的下一步按钮，但将继续执行")
                 except Exception as e:
-                    print(f"点击密码页面的下一步按钮失败，但将继续执行")
+                    print(f"点击密码页面的下一步按钮失败: {e}，但将继续执行")
                 
                 # 等待登录完成并跳转
                 try:
                   page.goto(app_url, timeout=30000)
                 except Exception as e:
-                  print(f"跳转到目标页面失败,但将继续执行")
+                  print(f"跳转到目标页面失败: {e}，但将继续执行")
                 
                 # 使用与cookie登录相同的判断标准验证登录是否成功
                 current_url = page.url
@@ -349,7 +352,7 @@ def run(playwright: Playwright) -> None:
             try:
                 page.goto(app_url, timeout=30000)
             except Exception as e:
-                print(f"跳转到目标页面失败,但将继续执行")
+                print(f"跳转到目标页面失败: {e}，但将继续执行")
             
             # 最终验证是否成功访问目标URL
             current_url = page.url
@@ -374,7 +377,7 @@ def run(playwright: Playwright) -> None:
                 
                 if elements_found:
                     print("成功点击Web按钮和Starting server文本，等待20秒后退出...")
-                    time.sleep(20)
+                    page.wait_for_timeout(20000)  # 等待20秒
                 else:
                     print("在120秒内未能找到Web按钮和Starting server文本，但将继续等待")
                 
@@ -385,29 +388,29 @@ def run(playwright: Playwright) -> None:
         except Exception as e:
             print(f"页面交互过程中发生错误: {e}")
             print(f"错误详情: {traceback.format_exc()}")
-        finally:
-            try:
-                print("自动化流程完成!")
-            except Exception:
-                pass
+
     except Exception as e:
         print(f"浏览器初始化过程中发生错误: {e}")
         print(f"错误详情: {traceback.format_exc()}")
     finally:
-        try:
-            page.close()
-        except Exception:
-            pass
+        # 优雅地关闭所有资源
+        if page:
+            try:
+                page.close()
+            except Exception as e:
+                print(f"关闭页面失败: {e}")
         
-        try:
-            context.close()
-        except Exception:
-            pass
+        if context:
+            try:
+                context.close()
+            except Exception as e:
+                print(f"关闭上下文失败: {e}")
         
-        try:
-            browser.close()
-        except Exception:
-            pass
+        if browser:
+            try:
+                browser.close()
+            except Exception as e:
+                print(f"关闭浏览器失败: {e}")
         
         print("脚本执行完毕!")
 
