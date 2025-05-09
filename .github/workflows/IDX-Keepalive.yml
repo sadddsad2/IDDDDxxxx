@@ -23,7 +23,7 @@ jobs:
     - name: Check WEB_URL Status
       id: check_url_status
       run: |
-        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L "${{ secrets.WEB_URL }}")
+        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L "${{ secrets.WEB_URL }}" || echo "400")
         echo "status=$HTTP_STATUS" >> $GITHUB_OUTPUT
         echo "WEB_URL status code: $HTTP_STATUS"
         
