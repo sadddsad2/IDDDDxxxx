@@ -54,8 +54,7 @@ jobs:
         fi
     
     - name: Download Google Cookies
-      if: steps.check_url_status.outputs.status != '200'
-      if: steps.check-cache.outputs.CACHE_HIT != 'true'
+      if: steps.check-cache.outputs.CACHE_HIT != 'true' && steps.check_url_status.outputs.status != '200'
       run: |
         curl -s -L "${{ secrets.COOK_URL }}" -o google_cookies.json
         if [ -f google_cookies.json ]; then
