@@ -1,11 +1,19 @@
 name: IDX-Keepalive 5分钟
 on:
-  #schedule:
-    #- cron: '*/5 0-15 * * *'
-   # - cron: '*/5 22-23 * * *'
-  # 手动触发选项
   workflow_dispatch:
-
+    inputs:
+      website_url:
+        description: '被检查网站的URL'
+        required: true
+        type: string
+      status_code:
+        description: '从网站获取的状态码'
+        required: true
+        type: string
+      timestamp:
+        description: '检查发生时的时间戳'
+        required: true
+        type: string
 jobs:
   keepalive:
     runs-on: ubuntu-22.04
