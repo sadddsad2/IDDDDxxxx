@@ -3,7 +3,7 @@ on:
   schedule:
     # Beijing time is UTC+8, schedule in UTC
     # Run at 6:00, 8:00, 10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00 (Beijing time)
-    - cron: '0 22,23 * * *'
+    - cron: '0 22,0,2,4,6,8,10,12,14 * * *'
   # Manual trigger option
   workflow_dispatch:
 
@@ -79,12 +79,18 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        
+        # Always install playwright explicitly to ensure it's available
+        pip install playwright
+        
         # Install from requirements.txt if it exists
         if [ -f requirements.txt ]; then
           pip install -r requirements.txt
-        else
-          pip install playwright
         fi
+        
+        # Verify playwright is installed correctly
+        python -c "import playwright; print(f'Playwright version: {playwright.__version__}')"
+        
         # Only install Playwright browsers if cache doesn't exist
         if [ "${{ steps.cache-playwright.outputs.cache-hit }}" != 'true' ]; then
           echo "Installing Playwright browsers..."
@@ -97,9 +103,19 @@ jobs:
       env:
         GOOGLE_PW: ${{ secrets.GOOGLE_PW }}
         APP_URL: ${{ secrets.APP_URL }}
+        WEB_URL: ${{ secrets.WEB_URL }}
+        PYTHONPATH: $PYTHONPATH:$(pwd)
       run: |
-        # Run the script
-        python main.py
+        # Print Python environment info for debugging
+        which python
+        python -V
+        echo "PYTHONPATH: $PYTHONPATH"
+        
+        # Verify modules are accessible
+        python -m pip list | grep playwright
+        
+        # Run the script with explicit Python path
+        python -m main
         
     - name: Get current timestamp for cookie cache key
       id: timestamp_generator
