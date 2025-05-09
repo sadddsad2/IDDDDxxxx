@@ -4,7 +4,7 @@ on:
   schedule:
     # Beijing time is UTC+8, schedule in UTC
     # Run at 6:00, 8:00, 10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00(Beijing time)
-    - cron: '0 22,0,2,4,6,8,10,12,14 * * *'
+    - cron: '0 22 * * *'
   # Manual trigger option
   workflow_dispatch:
 
@@ -25,14 +25,15 @@ jobs:
            echo "Error: Failed to download google_cookies.json"
         fi
       
-    - name: Restore cookies cache
-      id: cache-cookies
+    - name: Restore latest cookies cache
+      if: steps.check_url_status.outputs.status != '200'
+      id: cache-cookies-restore
       uses: actions/cache/restore@v3
       with:
-        path: google_cookies.json
-        key: google_cookies-v1
+        path: google_cookies.json # This ensures it overwrites the local file if cache is found
+        key: google_cookies-restore-attempt-${{ runner.os }}
         restore-keys: |
-          google_cookies-
+          google_cookies- # Cache action will find the newest cache starting with this prefix
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -90,11 +91,15 @@ jobs:
         # Run the script
         python main.py
         
-    - name: Save cookies cache
+    - name: Get current timestamp for cookie cache key
+      id: timestamp_generator
+      run: echo "CACHE_TIMESTAMP=$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+
+    - name: Save cookies cache with timestamp
       uses: actions/cache/save@v3
       with:
         path: google_cookies.json
-        key: google_cookies-v1
+        key: google_cookies-${{ steps.timestamp_generator.outputs.CACHE_TIMESTAMP }}
         
     - name: Save pip cache
       uses: actions/cache/save@v3
