@@ -14,14 +14,12 @@ on:
         description: '检查发生时的时间戳'
         required: true
         type: string
+
 jobs:
   keepalive:
     runs-on: ubuntu-22.04
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      
     - name: Check WEB_URL Status
       id: check_url_status
       run: |
@@ -29,25 +27,43 @@ jobs:
         echo "status=$HTTP_STATUS" >> $GITHUB_OUTPUT
         echo "WEB_URL status code: $HTTP_STATUS"
         
-    - name: Download Google Cookies
+    - name: Checkout code
       if: steps.check_url_status.outputs.status != '200'
-      run: |
-        curl -s -L "${{ secrets.COOK_URL }}" -o google_cookies.json
-        if [ -f google_cookies.json ]; then
-           echo "Successfully downloaded google_cookies.json"
-        else
-           echo "Error: Failed to download google_cookies.json"
-        fi
+      uses: actions/checkout@v3
       
-    - name: Restore cookies cache
+    - name: Restore latest cookies cache
       if: steps.check_url_status.outputs.status != '200'
-      id: cache-cookies
+      id: cache-cookies-restore
       uses: actions/cache/restore@v3
       with:
         path: google_cookies.json
-        key: google_cookies-v1
+        key: google_cookies-restore-attempt-${{ runner.os }}
         restore-keys: |
           google_cookies-
+    
+    - name: Check if cache was found
+      if: steps.check_url_status.outputs.status != '200'
+      id: check-cache
+      run: |
+        if [ -f "google_cookies.json" ]; then
+          echo "CACHE_HIT=true" >> $GITHUB_OUTPUT
+          echo "Using cached cookies file"
+        else
+          echo "CACHE_HIT=false" >> $GITHUB_OUTPUT
+          echo "No cached cookies found"
+        fi
+    
+    - name: Download Google Cookies
+      if: steps.check_url_status.outputs.status != '200'
+      if: steps.check-cache.outputs.CACHE_HIT != 'true'
+      run: |
+        curl -s -L "${{ secrets.COOK_URL }}" -o google_cookies.json
+        if [ -f google_cookies.json ]; then
+          echo "Downloaded google_cookies.json successfully"
+        else
+          echo "Error: Failed to download google_cookies.json"
+          exit 1
+        fi
     
     - name: Set up Python
       if: steps.check_url_status.outputs.status != '200'
@@ -87,12 +103,18 @@ jobs:
       if: steps.check_url_status.outputs.status != '200'
       run: |
         python -m pip install --upgrade pip
+        
+        # Always install playwright explicitly to ensure it's available
+        pip install playwright
+        
         # Install from requirements.txt if it exists
         if [ -f requirements.txt ]; then
           pip install -r requirements.txt
-        else
-          pip install playwright
         fi
+        
+        # Verify playwright is installed correctly
+        python -c "import playwright; print('Playwright successfully imported')"
+        
         # Only install Playwright browsers if cache doesn't exist
         if [ "${{ steps.cache-playwright.outputs.cache-hit }}" != 'true' ]; then
           echo "Installing Playwright browsers..."
@@ -101,22 +123,36 @@ jobs:
           echo "Using cached Playwright browsers"
         fi
       
-    - name: Run Python Script on Non-200 Status
+    - name: Run Python Script
       if: steps.check_url_status.outputs.status != '200'
       env:
         GOOGLE_PW: ${{ secrets.GOOGLE_PW }}
         APP_URL: ${{ secrets.APP_URL }}
         WEB_URL: ${{ secrets.WEB_URL }}
+        PYTHONPATH: $PYTHONPATH:$(pwd)
       run: |
-        # Run the script
-        python main.py
+        # Print Python environment info for debugging
+        which python
+        python -V
+        echo "PYTHONPATH: $PYTHONPATH"
         
-    - name: Save cookies cache
+        # Verify modules are accessible
+        python -m pip list | grep playwright
+        
+        # Run the script with explicit Python path
+        python -m main
+        
+    - name: Get current timestamp for cookie cache key
+      if: steps.check_url_status.outputs.status != '200'
+      id: timestamp_generator
+      run: echo "CACHE_TIMESTAMP=$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+      
+    - name: Save cookies cache with timestamp
       if: steps.check_url_status.outputs.status != '200'
       uses: actions/cache/save@v3
       with:
         path: google_cookies.json
-        key: google_cookies-v1
+        key: google_cookies-${{ steps.timestamp_generator.outputs.CACHE_TIMESTAMP }}
         
     - name: Save pip cache
       if: steps.check_url_status.outputs.status != '200'
@@ -130,4 +166,4 @@ jobs:
       uses: actions/cache/save@v3
       with:
         path: ~/.cache/ms-playwright
-        key: ${{ runner.os }}-playwright-${{ hashFiles('**/playwright.version') }}        
+        key: ${{ runner.os }}-playwright-${{ hashFiles('**/playwright.version') }}
