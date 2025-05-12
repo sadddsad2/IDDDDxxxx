@@ -139,7 +139,7 @@ jobs:
         python -m pip list | grep playwright
         
         # Run the script with explicit Python path
-        python -m main
+        python main.py
         
     - name: Get current timestamp for cookie cache key
       if: steps.check_url_status.outputs.status != '200'
