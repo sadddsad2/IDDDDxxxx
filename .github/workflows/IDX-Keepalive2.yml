@@ -1,4 +1,4 @@
-name: IDX-Keepalive 5分钟
+name: IDX-Keepalive2 5分钟
 on:
   workflow_dispatch:
     inputs:
