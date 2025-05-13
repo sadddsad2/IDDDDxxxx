@@ -178,8 +178,7 @@ jobs:
         id: check_status
         run: |
           echo "Main job status: ${{ needs.keepalive.result }}"
-          echo "Website status code: ${{ needs.keepalive.outputs.status }}"
-          
+     
           if [[ "${{ needs.keepalive.result }}" == "failure" || "${{ needs.keepalive.result }}" == "cancelled" ]]; then
             echo "status=failure" >> $GITHUB_OUTPUT
           elif [[ "${{ needs.keepalive.result }}" == "success" ]]; then
@@ -191,21 +190,18 @@ jobs:
       # 只在出错或网站状态异常时发送通知
       - name: Send Telegram notification on error
         if: >-
-          steps.check_status.outputs.status == 'failure' || 
-          needs.keepalive.outputs.status != '200'
+          steps.check_status.outputs.status == 'failure'
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
           message: |
-            ? DeepNote Keepalive 警报!
+            ? DeepNote Keepalive 异常警报!
             
-            ${{ steps.check_status.outputs.status == 'failure' && '工作流执行失败!' || '检测到网站状态异常!' }}
+            ${{ steps.check_status.outputs.status == 'failure' && '工作流执行失败!' }}
             
             仓库: ${{ github.repository }}
             分支: ${{ github.ref_name }}
-            检查网站URL: ${{ github.event.inputs.website_url || secrets.WEB_URL }}
-            状态码: ${{ needs.keepalive.outputs.status || github.event.inputs.status_code || '未能获取' }}
             主任务状态: ${{ needs.keepalive.result }}
             
             执行时间: ${{ github.run_started_at }}
