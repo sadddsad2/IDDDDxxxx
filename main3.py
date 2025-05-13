@@ -134,7 +134,7 @@ def run(playwright: Playwright) -> None:
     email = credentials[0] if len(credentials) > 0 else None
     password = credentials[1] if len(credentials) > 1 else None
     
-    app_url = os.environ.get("APP_URL2", "https://idx.google.com/app-43646734")
+    app_url = os.environ.get("APP_URL3", "https://idx.google.com/app-43646734")
     cookies_path = Path("google_cookies.json")
     
     # Check if credentials are available
