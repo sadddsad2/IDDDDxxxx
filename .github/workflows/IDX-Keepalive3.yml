@@ -1,0 +1,208 @@
+name: IDX-Keepalive3
+on:
+  workflow_dispatch:
+    inputs:
+      website_url:
+        description: '被检查网站的URL'
+        required: true
+        type: string
+      status_code:
+        description: '从网站获取的状态码'
+        required: true
+        type: string
+      timestamp:
+        description: '检查发生时的时间戳'
+        required: true
+        type: string
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Check WEB_URL3 Status
+      id: check_url_status
+      run: |
+        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L "${{ secrets.WEB_URL3 }}" || echo "400")
+        echo "status=$HTTP_STATUS" >> $GITHUB_OUTPUT
+        echo "WEB_URL3 status code: $HTTP_STATUS"
+        
+    - name: Checkout code
+      if: steps.check_url_status.outputs.status != '200'
+      uses: actions/checkout@v3
+      
+    - name: Restore latest cookies cache
+      if: steps.check_url_status.outputs.status != '200'
+      id: cache-cookies-restore
+      uses: actions/cache/restore@v3
+      with:
+        path: google_cookies.json
+        key: google_cookies-restore-attempt-${{ runner.os }}
+        restore-keys: |
+          google_cookies-
+    
+    - name: Check if cache was found
+      if: steps.check_url_status.outputs.status != '200'
+      id: check-cache
+      run: |
+        if [ -f "google_cookies.json" ]; then
+          echo "CACHE_HIT=true" >> $GITHUB_OUTPUT
+          echo "Using cached cookies file"
+        else
+          echo "CACHE_HIT=false" >> $GITHUB_OUTPUT
+          echo "No cached cookies found"
+        fi
+    
+    - name: Download Google Cookies
+      if: steps.check-cache.outputs.CACHE_HIT != 'true' && steps.check_url_status.outputs.status != '200'
+      run: |
+        curl -s -L "${{ secrets.COOK_URL }}" -o google_cookies.json
+        if [ -f google_cookies.json ]; then
+          echo "Downloaded google_cookies.json successfully"
+        else
+          echo "Error: Failed to download google_cookies.json"
+          exit 1
+        fi
+    
+    - name: Set up Python
+      if: steps.check_url_status.outputs.status != '200'
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Restore pip cache
+      if: steps.check_url_status.outputs.status != '200'
+      id: cache-pip
+      uses: actions/cache/restore@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Restore Playwright cache
+      if: steps.check_url_status.outputs.status != '200'
+      id: cache-playwright
+      uses: actions/cache/restore@v3
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-playwright-${{ hashFiles('**/playwright.version') }}
+        restore-keys: |
+          ${{ runner.os }}-playwright-
+          
+    - name: Create playwright.version file if not exists
+      if: steps.check_url_status.outputs.status != '200'
+      run: |
+        if [ ! -f "playwright.version" ]; then
+          playwright_version=$(pip show playwright 2>/dev/null | grep Version | cut -d ' ' -f 2 || echo "1.34.0")
+          echo "$playwright_version" > playwright.version
+        fi
+    
+    - name: Install dependencies
+      if: steps.check_url_status.outputs.status != '200'
+      run: |
+        python -m pip install --upgrade pip
+        
+        # Always install playwright explicitly to ensure it's available
+        pip install playwright
+        
+        # Install from requirements.txt if it exists
+        if [ -f requirements.txt ]; then
+          pip install -r requirements.txt
+        fi
+        
+        # Verify playwright is installed correctly
+        python -c "import playwright; print('Playwright successfully imported')"
+        
+        # Only install Playwright browsers if cache doesn't exist
+        if [ "${{ steps.cache-playwright.outputs.cache-hit }}" != 'true' ]; then
+          echo "Installing Playwright browsers..."
+          python -m playwright install firefox
+        else
+          echo "Using cached Playwright browsers"
+        fi
+      
+    - name: Run Python Script
+      if: steps.check_url_status.outputs.status != '200'
+      env:
+        GOOGLE_PW: ${{ secrets.GOOGLE_PW }}
+        APP_URL3: ${{ secrets.APP_URL3 }}
+        WEB_URL3: ${{ secrets.WEB_URL3 }}
+        PYTHONPATH: $PYTHONPATH:$(pwd)
+      run: |
+        # Print Python environment info for debugging
+        which python
+        python -V
+        echo "PYTHONPATH: $PYTHONPATH"
+        
+        # Verify modules are accessible
+        python -m pip list | grep playwright
+        
+        # Run the script with explicit Python path
+        python main3.py
+        
+    - name: Get current timestamp for cookie cache key
+      if: steps.check_url_status.outputs.status != '200'
+      id: timestamp_generator
+      run: echo "CACHE_TIMESTAMP=$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+      
+    - name: Save cookies cache with timestamp
+      if: steps.check_url_status.outputs.status != '200'
+      uses: actions/cache/save@v3
+      with:
+        path: google_cookies.json
+        key: google_cookies-${{ steps.timestamp_generator.outputs.CACHE_TIMESTAMP }}
+        
+    - name: Save pip cache
+      if: steps.check_url_status.outputs.status != '200'
+      uses: actions/cache/save@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        
+    - name: Save Playwright cache
+      if: steps.check_url_status.outputs.status != '200'
+      uses: actions/cache/save@v3
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-playwright-${{ hashFiles('**/playwright.version') }}
+  
+  # 独立监控任务，在主任务之后运行，只在出错时发送通知
+  monitor:
+    needs: keepalive  # 这确保监控任务在主任务完成后才运行
+    runs-on: ubuntu-latest
+    if: ${{ always() }}  # 无论主任务成功还是失败，都运行这个任务
+    
+    steps:
+      - name: Check main job status
+        id: check_status
+        run: |
+          echo "Main job status: ${{ needs.keepalive.result }}"
+     
+          if [[ "${{ needs.keepalive.result }}" == "failure" || "${{ needs.keepalive.result }}" == "cancelled" ]]; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.keepalive.result }}" == "success" ]]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "status=unknown" >> $GITHUB_OUTPUT
+          fi
+      
+      # 只在出错或网站状态异常时发送通知
+      - name: Send Telegram notification on error
+        if: >-
+          steps.check_status.outputs.status == 'failure'
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ? DeepNote Keepalive 异常警报!
+            
+            ${{ steps.check_status.outputs.status == 'failure' && '工作流执行失败!' }}
+            
+            仓库: ${{ github.repository }}
+            分支: ${{ github.ref_name }}
+            主任务状态: ${{ needs.keepalive.result }}
+            
+            执行时间: ${{ github.run_started_at }}
+            查看详情: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
