@@ -166,6 +166,7 @@ jobs:
       with:
         path: ~/.cache/ms-playwright
         key: ${{ runner.os }}-playwright-${{ hashFiles('**/playwright.version') }}
+  
   # 独立监控任务，在主任务之后运行，只在出错时发送通知
   monitor:
     needs: keepalive  # 这确保监控任务在主任务完成后才运行
@@ -208,4 +209,4 @@ jobs:
             主任务状态: ${{ needs.keepalive.result }}
             
             执行时间: ${{ github.run_started_at }}
-            查看详情: https://github.com/${{ github.repository }}/actions/r
+            查看详情: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
