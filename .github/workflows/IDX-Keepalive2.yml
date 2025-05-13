@@ -166,3 +166,46 @@ jobs:
       with:
         path: ~/.cache/ms-playwright
         key: ${{ runner.os }}-playwright-${{ hashFiles('**/playwright.version') }}
+  # 独立监控任务，在主任务之后运行，只在出错时发送通知
+  monitor:
+    needs: keepalive  # 这确保监控任务在主任务完成后才运行
+    runs-on: ubuntu-latest
+    if: ${{ always() }}  # 无论主任务成功还是失败，都运行这个任务
+    
+    steps:
+      - name: Check main job status
+        id: check_status
+        run: |
+          echo "Main job status: ${{ needs.keepalive.result }}"
+          echo "Website status code: ${{ needs.keepalive.outputs.status }}"
+          
+          if [[ "${{ needs.keepalive.result }}" == "failure" || "${{ needs.keepalive.result }}" == "cancelled" ]]; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.keepalive.result }}" == "success" ]]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "status=unknown" >> $GITHUB_OUTPUT
+          fi
+      
+      # 只在出错或网站状态异常时发送通知
+      - name: Send Telegram notification on error
+        if: >-
+          steps.check_status.outputs.status == 'failure' || 
+          needs.keepalive.outputs.status != '200'
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ? DeepNote Keepalive 警报!
+            
+            ${{ steps.check_status.outputs.status == 'failure' && '工作流执行失败!' || '检测到网站状态异常!' }}
+            
+            仓库: ${{ github.repository }}
+            分支: ${{ github.ref_name }}
+            检查网站URL: ${{ github.event.inputs.website_url || secrets.WEB_URL }}
+            状态码: ${{ needs.keepalive.outputs.status || github.event.inputs.status_code || '未能获取' }}
+            主任务状态: ${{ needs.keepalive.result }}
+            
+            执行时间: ${{ github.run_started_at }}
+            查看详情: https://github.com/${{ github.repository }}/actions/r
