@@ -1,4 +1,4 @@
-name: IDX-Keepalive 2小时
+name: IDX-Keepalive 早
 on:
   schedule:
     # Beijing time is UTC+8, schedule in UTC
@@ -102,7 +102,7 @@ jobs:
     - name: Run Python Script
       env:
         GOOGLE_PW: ${{ secrets.GOOGLE_PW }}
-        APP_URL: ${{ secrets.APP_URL }}
+        APP_URL4: ${{ secrets.APP_URL4 }}
         WEB_URL: ${{ secrets.WEB_URL }}
         PYTHONPATH: $PYTHONPATH:$(pwd)
       run: |
@@ -115,7 +115,7 @@ jobs:
         python -m pip list | grep playwright
         
         # Run the script with explicit Python path
-        python -m main
+        python main4.py
         
     - name: Get current timestamp for cookie cache key
       id: timestamp_generator
