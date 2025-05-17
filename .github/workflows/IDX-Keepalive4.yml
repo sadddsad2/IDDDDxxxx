@@ -1,4 +1,4 @@
-name: IDX-Keepalive 早
+name: IDX-Keepalive4 早6点启动
 on:
   schedule:
     # Beijing time is UTC+8, schedule in UTC
