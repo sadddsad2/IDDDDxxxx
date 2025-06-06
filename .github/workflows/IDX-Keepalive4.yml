@@ -1,11 +1,19 @@
-name: IDX-Keepalive4 早6点启动
+name: IDX-Keepalive4
 on:
-  schedule:
-    # Beijing time is UTC+8, schedule in UTC
-    # Run at 6:00, 7:00 北京时间
-    - cron: '0 21 * * *'
-  # Manual trigger option
   workflow_dispatch:
+    inputs:
+      website_url:
+        description: '被检查网站的URL'
+        required: true
+        type: string
+      status_code:
+        description: '从网站获取的状态码'
+        required: true
+        type: string
+      timestamp:
+        description: '检查发生时的时间戳'
+        required: true
+        type: string
 
 jobs:
   keepalive:
