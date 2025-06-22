@@ -376,8 +376,8 @@ def run(playwright: Playwright) -> None:
                 elements_found = refresh_page_and_wait(page, app_url, refresh_attempts=5, total_wait_time=120)
                 
                 if elements_found:
-                    print("成功点击Web按钮和Starting server文本，等待20秒后退出...")
-                    page.wait_for_timeout(20000)  # 等待20秒
+                    print("成功点击Web按钮和Starting server文本，等待60秒后退出...")
+                    page.wait_for_timeout(60000)  # 等待60秒
                 else:
                     print("在120秒内未能找到Web按钮和Starting server文本，但将继续等待")
                 
