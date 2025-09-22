@@ -145,13 +145,6 @@ def refresh_page_and_wait(page, url, refresh_attempts=3, total_wait_time=240):
             
             refresh_count += 1
         
-        # 首先检查并点击Try Again按钮（如果存在）
-        try:
-            print("检查是否需要点击Try Again按钮...")
-            check_and_click_try_again(page, max_attempts=3)
-        except Exception as e:
-            print(f"检查Try Again按钮时出错: {e}，但将继续执行")
-        
         # 尝试查找Web按钮
         if not web_button_found:
             try:
@@ -164,6 +157,18 @@ def refresh_page_and_wait(page, url, refresh_attempts=3, total_wait_time=240):
                         print("找到Web按钮，点击...")
                         web_button.click()
                         web_button_found = True
+                        
+                        # Web按钮点击后，等待一段时间然后检查Try Again按钮
+                        print("Web按钮已点击，等待页面响应...")
+                        page.wait_for_timeout(5000)  # 等待5秒让页面响应
+                        
+                        # 检查并点击Try Again按钮（如果存在）
+                        try:
+                            print("检查Web按钮点击后是否需要点击Try Again按钮...")
+                            check_and_click_try_again(page, max_attempts=3)
+                        except Exception as e:
+                            print(f"检查Try Again按钮时出错: {e}，但将继续执行")
+                            
                     else:
                         print("找不到Web按钮")
                 else:
