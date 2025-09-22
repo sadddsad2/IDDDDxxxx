@@ -11,15 +11,116 @@ def wait_for_element_with_retry(page, locator, description, timeout_seconds=10, 
         try:
             print(f"等待{description}出现，第{attempt + 1}次尝试...")
             element = page.locator(locator).wait_for(state="visible", timeout=timeout_seconds * 1000)
-            print(f"? {description}已出现!")
+            print(f"✓ {description}已出现!")
             return True
         except Exception as e:
-            print(f"× 等待{description}超时: {e}")
+            print(f"✗ 等待{description}超时: {e}")
             if attempt < max_attempts - 1:
                 print("准备重试...")
             else:
                 print(f"已达到最大尝试次数({max_attempts})，无法找到{description}")
                 return False
+    return False
+
+def check_and_click_try_again(page, max_attempts=5):
+    """检查并点击Try Again按钮，如果存在的话"""
+    for attempt in range(max_attempts):
+        try:
+            print(f"检查Try Again按钮是否存在，第{attempt + 1}次尝试...")
+            
+            # 首先在主页面查找Try Again按钮
+            try_again_found = False
+            
+            # 方法1: 直接在主页面查找
+            try:
+                try_again_button = page.get_by_text("Try Again", exact=True)
+                if try_again_button.is_visible(timeout=2000):
+                    print("在主页面找到Try Again按钮，点击...")
+                    try_again_button.click()
+                    try_again_found = True
+                    print("✓ 成功点击Try Again按钮")
+                    page.wait_for_timeout(3000)  # 等待3秒让页面响应
+                    return True
+            except Exception as e:
+                print(f"在主页面查找Try Again按钮失败: {e}")
+            
+            # 方法2: 在iframe中查找Try Again按钮
+            if not try_again_found:
+                try:
+                    # 查找包含iframe的容器
+                    iframe_container = "#iframe-container iframe"
+                    frame = page.frame_locator(iframe_container)
+                    
+                    if frame:
+                        # 在第一层iframe中查找
+                        try_again_in_frame = frame.get_by_text("Try Again", exact=True)
+                        if try_again_in_frame.is_visible(timeout=2000):
+                            print("在iframe中找到Try Again按钮，点击...")
+                            try_again_in_frame.click()
+                            try_again_found = True
+                            print("✓ 成功点击iframe中的Try Again按钮")
+                            page.wait_for_timeout(3000)
+                            return True
+                except Exception as e:
+                    print(f"在iframe中查找Try Again按钮失败: {e}")
+            
+            # 方法3: 在所有可见的frame中查找
+            if not try_again_found:
+                try:
+                    all_frames = page.frames
+                    for i, frame in enumerate(all_frames):
+                        try:
+                            try_again_in_frame = frame.get_by_text("Try Again", exact=True)
+                            if try_again_in_frame.is_visible(timeout=1000):
+                                print(f"在第{i}个frame中找到Try Again按钮，点击...")
+                                try_again_in_frame.click()
+                                try_again_found = True
+                                print("✓ 成功点击frame中的Try Again按钮")
+                                page.wait_for_timeout(3000)
+                                return True
+                        except Exception:
+                            continue
+                except Exception as e:
+                    print(f"遍历所有frame查找Try Again按钮失败: {e}")
+            
+            # 方法4: 通过CSS选择器查找按钮
+            if not try_again_found:
+                try:
+                    try_again_selectors = [
+                        'button:has-text("Try Again")',
+                        '[role="button"]:has-text("Try Again")',
+                        'input[value="Try Again"]',
+                        '.try-again-button',
+                        '#try-again'
+                    ]
+                    
+                    for selector in try_again_selectors:
+                        try:
+                            try_again_element = page.query_selector(selector)
+                            if try_again_element and try_again_element.is_visible():
+                                print(f"通过选择器{selector}找到Try Again按钮，点击...")
+                                try_again_element.click()
+                                try_again_found = True
+                                print("✓ 成功点击Try Again按钮")
+                                page.wait_for_timeout(3000)
+                                return True
+                        except Exception:
+                            continue
+                except Exception as e:
+                    print(f"通过CSS选择器查找Try Again按钮失败: {e}")
+            
+            # 如果没找到，等待一段时间后重试
+            if not try_again_found:
+                print("未找到Try Again按钮，等待2秒后重试...")
+                page.wait_for_timeout(2000)
+            else:
+                break
+                
+        except Exception as e:
+            print(f"检查Try Again按钮时发生错误: {e}")
+            page.wait_for_timeout(2000)
+    
+    print("未找到Try Again按钮或已达到最大尝试次数")
     return False
 
 def refresh_page_and_wait(page, url, refresh_attempts=3, total_wait_time=240):
@@ -56,6 +157,18 @@ def refresh_page_and_wait(page, url, refresh_attempts=3, total_wait_time=240):
                         print("找到Web按钮，点击...")
                         web_button.click()
                         web_button_found = True
+                        
+                        # Web按钮点击后，等待一段时间然后检查Try Again按钮
+                        print("Web按钮已点击，等待页面响应...")
+                        page.wait_for_timeout(5000)  # 等待5秒让页面响应
+                        
+                        # 检查并点击Try Again按钮（如果存在）
+                        try:
+                            print("检查Web按钮点击后是否需要点击Try Again按钮...")
+                            check_and_click_try_again(page, max_attempts=3)
+                        except Exception as e:
+                            print(f"检查Try Again按钮时出错: {e}，但将继续执行")
+                            
                     else:
                         print("找不到Web按钮")
                 else:
