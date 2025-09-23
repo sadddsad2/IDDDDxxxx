@@ -30,7 +30,7 @@ def check_and_click_try_again(page, max_attempts=5):
             
             try_again_found = False
             
-            # 方法1: 使用动态匹配iframe name的路径查找Try Again按钮
+            # 使用动态匹配iframe name的路径查找Try Again按钮
             try:
                 print("使用动态匹配查找Try Again按钮...")
                 
@@ -39,7 +39,7 @@ def check_and_click_try_again(page, max_attempts=5):
                 
                 # 获取所有frame，查找匹配模式的iframe name
                 all_frames = page.frames
-                target_iframe_name = None
+                target_iframe_names = []
                 
                 for frame in all_frames:
                     try:
@@ -47,116 +47,41 @@ def check_and_click_try_again(page, max_attempts=5):
                         # 查找符合UUID格式的iframe name（包含连字符的长字符串）
                         if frame_name and len(frame_name) > 30 and '-' in frame_name:
                             print(f"找到可能的目标iframe: {frame_name}")
-                            target_iframe_name = frame_name
-                            break
+                            target_iframe_names.append(frame_name)
                     except Exception:
                         continue
                 
-                if target_iframe_name:
-                    # 使用找到的iframe name构建路径
-                    try_again_button = outer_frame.frame_locator(f"iframe[name=\"{target_iframe_name}\"]").frame_locator("iframe[title=\"Web\"]").frame_locator("#previewFrame").get_by_role("button", name="Try Again")
-                    
-                    if try_again_button.is_visible(timeout=3000):
-                        print(f"通过动态匹配找到Try Again按钮（iframe: {target_iframe_name}），点击...")
-                        try_again_button.click()
-                        try_again_found = True
-                        print("✓ 成功点击Try Again按钮（动态匹配）")
-                        page.wait_for_timeout(3000)
-                        return True
-                else:
+                # 尝试所有找到的iframe名称
+                for target_iframe_name in target_iframe_names:
+                    try:
+                        print(f"尝试使用iframe: {target_iframe_name}")
+                        # 使用找到的iframe name构建路径
+                        try_again_button = outer_frame.frame_locator(f"iframe[name=\"{target_iframe_name}\"]").frame_locator("iframe[title=\"Web\"]").frame_locator("#previewFrame").get_by_role("button", name="Try Again")
+                        
+                        if try_again_button.is_visible(timeout=3000):
+                            print(f"通过动态匹配找到Try Again按钮（iframe: {target_iframe_name}），点击...")
+                            try_again_button.click()
+                            try_again_found = True
+                            print("✓ 成功点击Try Again按钮（动态匹配）")
+                            page.wait_for_timeout(3000)
+                            return True
+                        else:
+                            print(f"Try Again按钮在iframe {target_iframe_name} 中不可见")
+                    except Exception as e:
+                        print(f"使用iframe {target_iframe_name} 失败: {e}")
+                        continue
+                
+                if not target_iframe_names:
                     print("未找到符合UUID格式的iframe name")
+                elif not try_again_found:
+                    print("找到了iframe但Try Again按钮不可见或无法点击")
                     
             except Exception as e:
                 print(f"通过动态匹配查找Try Again按钮失败: {e}")
             
-            # 方法2: 使用通配符匹配任何iframe
+            # 如果找到了但没有成功点击，等待后重试
             if not try_again_found:
-                try:
-                    print("使用通配符匹配查找Try Again按钮...")
-                    outer_frame = page.frame_locator("#iframe-container iframe >> nth=0")
-                    
-                    # 尝试匹配任何内部iframe
-                    iframe_selectors = [
-                        "iframe",  # 任何iframe
-                        "iframe[name]",  # 有name属性的iframe
-                    ]
-                    
-                    for iframe_selector in iframe_selectors:
-                        try:
-                            try_again_button = outer_frame.frame_locator(iframe_selector).frame_locator("iframe[title=\"Web\"]").frame_locator("#previewFrame").get_by_role("button", name="Try Again")
-                            
-                            if try_again_button.is_visible(timeout=2000):
-                                print(f"通过通配符匹配找到Try Again按钮，点击...")
-                                try_again_button.click()
-                                try_again_found = True
-                                print("✓ 成功点击Try Again按钮（通配符匹配）")
-                                page.wait_for_timeout(3000)
-                                return True
-                        except Exception:
-                            continue
-                            
-                except Exception as e:
-                    print(f"通过通配符匹配查找Try Again按钮失败: {e}")
-            
-            # 方法3: 逐层查找iframe结构
-            if not try_again_found:
-                try:
-                    print("逐层查找iframe结构...")
-                    outer_frame = page.frame_locator("#iframe-container iframe >> nth=0")
-                    
-                    # 查找所有可能的嵌套iframe组合
-                    nested_patterns = [
-                        # 不同的iframe嵌套模式
-                        ("iframe >> nth=0", "iframe[title=\"Web\"]", "#previewFrame"),
-                        ("iframe >> nth=1", "iframe[title=\"Web\"]", "#previewFrame"),
-                        ("iframe", "iframe[title=\"Web\"] >> nth=0", "#previewFrame"),
-                        ("iframe", "iframe[title=\"Web\"]", "iframe >> nth=0"),
-                    ]
-                    
-                    for pattern in nested_patterns:
-                        try:
-                            chain = outer_frame
-                            for selector in pattern:
-                                chain = chain.frame_locator(selector)
-                            
-                            try_again_button = chain.get_by_role("button", name="Try Again")
-                            
-                            if try_again_button.is_visible(timeout=1500):
-                                print(f"通过模式匹配找到Try Again按钮，点击...")
-                                try_again_button.click()
-                                try_again_found = True
-                                print("✓ 成功点击Try Again按钮（模式匹配）")
-                                page.wait_for_timeout(3000)
-                                return True
-                        except Exception:
-                            continue
-                            
-                except Exception as e:
-                    print(f"通过模式匹配查找Try Again按钮失败: {e}")
-            
-            # 方法4: 在所有frame中直接查找Try Again按钮
-            if not try_again_found:
-                try:
-                    print("在所有frame中直接查找Try Again按钮...")
-                    all_frames = page.frames
-                    for i, frame in enumerate(all_frames):
-                        try:
-                            try_again_button = frame.get_by_role("button", name="Try Again")
-                            if try_again_button.is_visible(timeout=1000):
-                                print(f"在第{i}个frame中找到Try Again按钮，点击...")
-                                try_again_button.click()
-                                try_again_found = True
-                                print("✓ 成功点击frame中的Try Again按钮")
-                                page.wait_for_timeout(3000)
-                                return True
-                        except Exception:
-                            continue
-                except Exception as e:
-                    print(f"遍历所有frame查找Try Again按钮失败: {e}")
-            
-            # 如果没找到，等待一段时间后重试
-            if not try_again_found:
-                print("未找到Try Again按钮，等待2秒后重试...")
+                print("未找到或无法点击Try Again按钮，等待2秒后重试...")
                 page.wait_for_timeout(2000)
             else:
                 break
@@ -165,8 +90,9 @@ def check_and_click_try_again(page, max_attempts=5):
             print(f"检查Try Again按钮时发生错误: {e}")
             page.wait_for_timeout(2000)
     
-    print("未找到Try Again按钮或已达到最大尝试次数")
-    return False
+    if not try_again_found:
+        print("在所有尝试中都未能找到或点击Try Again按钮")
+    return try_again_found
 
 def refresh_page_and_wait(page, url, refresh_attempts=3, total_wait_time=240):
     """刷新页面并等待指定元素，总共尝试指定次数"""
@@ -292,7 +218,7 @@ def run(playwright: Playwright) -> None:
     email = credentials[0] if len(credentials) > 0 else None
     password = credentials[1] if len(credentials) > 1 else None
     
-    app_url = os.environ.get("APP_URL3", "https://idx.google.com/app-13646734")
+    app_url = os.environ.get("APP_URL3", "https://idx.google.com/app-43646734")
     cookies_path = Path("google_cookies.json")
     
     # Check if credentials are available
