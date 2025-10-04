@@ -1,4 +1,4 @@
-name: IDX-Keepalive4
+name: IDX-Keepalive5-比利时
 on:
   workflow_dispatch:
     inputs:
@@ -110,7 +110,7 @@ jobs:
     - name: Run Python Script
       env:
         GOOGLE_PW: ${{ secrets.GOOGLE_PW }}
-        APP_URL4: ${{ secrets.APP_URL4 }}
+        APP_URL5: ${{ secrets.APP_URL5 }}
         WEB_URL: ${{ secrets.WEB_URL }}
         PYTHONPATH: $PYTHONPATH:$(pwd)
       run: |
