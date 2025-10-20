@@ -327,7 +327,7 @@ def run(playwright: Playwright) -> None:
     
     if time_added:
         notification_message = (
-            f"? NVIDIA Air 时间增加成功\n"
+            f"✅ NVIDIA Air 时间增加成功\n"
             f"━━━━━━━━━━━━━━━━\n"
             f"初始时间: {initial_time}\n"
             f"增加后时间: {final_time}\n"
@@ -338,7 +338,7 @@ def run(playwright: Playwright) -> None:
         send_tg_notification(notification_message)
     else:
         notification_message = (
-            f"?? NVIDIA Air 时间未达到最大值\n"
+            f"✅ NVIDIA Air 时间未达到最大值\n"
             f"━━━━━━━━━━━━━━━━\n"
             f"初始时间: {initial_time}\n"
             f"当前时间: {final_time}\n"
