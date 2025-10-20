@@ -1,7 +1,7 @@
 name: nvidia-Keepalive
 on:
   schedule:
-    - cron: '0 19 */5 * *'
+    - cron: '0 19 */3 * *'
   workflow_dispatch:
     inputs:
       website_url:
