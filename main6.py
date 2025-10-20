@@ -274,8 +274,8 @@ def run(playwright: Playwright) -> None:
     
     print(f"初始时间未达到最大值，需要增加时间")
     
-    # 循环执行添加时间，最多尝试6次
-    max_attempts = 6
+    # 循环执行添加时间，最多尝试15次
+    max_attempts = 15
     attempts = 0
     time_added = False
     final_time = initial_time  # 记录最终时间
