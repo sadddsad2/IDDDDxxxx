@@ -89,7 +89,7 @@ def run(playwright: Playwright) -> None:
     email = credentials[0]
     password = credentials[1]
     
-    browser = playwright.firefox.launch(headless=False)
+    browser = playwright.firefox.launch(headless=True)
     context = browser.new_context()
     page = context.new_page()
     
@@ -141,7 +141,7 @@ def run(playwright: Playwright) -> None:
     while attempts < max_attempts:
         try:
             # 检查页面中是否已存在"6 days 23 hours 59 minutes"
-            target_text = page.get_by_text("6 days 23 hours 59 minutes", exact=False)
+            target_text = page.get_by_text("6 days 23 hours 59 minutes", exact=True)
             if target_text.count() > 0:
                 print("时间已增加到 6 days 23 hours 59 minutes")
                 break
