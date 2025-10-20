@@ -320,7 +320,7 @@ def run(playwright: Playwright) -> None:
         # 获取最终时间状态
         _, final_time_text = check_time_status(page)
         notification_message = (
-            f"? NVIDIA Air 登陆成功\n"
+            f"✅ NVIDIA Air 登陆成功\n"
             f"时间状态: 已增加到最大值\n"
             f"当前时间: {final_time_text}\n"
             f"尝试次数: {attempts}/{max_attempts}\n"
@@ -332,7 +332,7 @@ def run(playwright: Playwright) -> None:
         # 获取当前时间状态
         _, current_time_text = check_time_status(page)
         notification_message = (
-            f"?? NVIDIA Air 登陆成功\n"
+            f"✅ NVIDIA Air 登陆成功\n"
             f"时间状态: 尝试增加但未达到最大值\n"
             f"当前时间: {current_time_text}\n"
             f"尝试次数: {attempts}/{max_attempts}\n"
