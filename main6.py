@@ -13,6 +13,42 @@ COOKIES_FILE = os.getenv("COOKIES_FILE", "nvidia_cookies.json")
 TG_CONFIG = os.getenv("TG", "")  # 格式: ID  TOKEN
 
 
+def send_tg_notification(message: str) -> None:
+    """发送Telegram通知"""
+    if not TG_CONFIG:
+        print("TG_CONFIG 未设置，跳过发送通知")
+        return
+    
+    if "  " not in TG_CONFIG:
+        print(f"TG_CONFIG 格式错误，应该是 'ID  TOKEN'，当前值: {TG_CONFIG}")
+        return
+    
+    try:
+        parts = TG_CONFIG.split("  ", 1)
+        chat_id = parts[0].strip()
+        token = parts[1].strip()
+        
+        print(f"准备发送TG通知，Chat ID: {chat_id[:10]}***")
+        
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        data = {
+            "chat_id": chat_id,
+            "text": message
+        }
+        response = requests.post(url, json=data, timeout=5)
+        if response.status_code == 200:
+            print(f"? TG通知已发送成功")
+        else:
+            print(f"? TG通知发送失败: HTTP {response.status_code}")
+            print(f"  响应: {response.text}")
+    except requests.exceptions.Timeout:
+        print(f"? TG通知发送超时（无法连接到api.telegram.org）")
+    except requests.exceptions.ConnectionError:
+        print(f"? TG通知发送失败（网络连接错误）")
+    except Exception as e:
+        print(f"? 发送TG通知错误: {e}")
+
+
 def save_cookies(context, filename=COOKIES_FILE) -> None:
     """保存cookie到文件"""
     cookies = context.cookies()
@@ -125,6 +161,7 @@ def run(playwright: Playwright) -> None:
     
     if not login_success:
         print("登陆失败，程序退出")
+        send_tg_notification(f"? NVIDIA Air 登陆失败\n时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         page.close()
         context.close()
         browser.close()
@@ -137,6 +174,7 @@ def run(playwright: Playwright) -> None:
     # 循环执行添加时间，最多尝试6次
     max_attempts = 6
     attempts = 0
+    time_added = False
     
     while attempts < max_attempts:
         try:
@@ -144,6 +182,7 @@ def run(playwright: Playwright) -> None:
             target_text = page.get_by_text("6 days 23 hours 59 minutes", exact=True)
             if target_text.count() > 0:
                 print("时间已增加到 6 days 23 hours 59 minutes")
+                time_added = True
                 break
             
             # 点击选项菜单
@@ -163,6 +202,10 @@ def run(playwright: Playwright) -> None:
     
     if attempts >= max_attempts:
         print(f"已尝试 {max_attempts} 次，停止增加时间")
+    
+    # 发送成功通知
+    if time_added:
+        send_tg_notification(f"? NVIDIA Air 登陆成功，时间已增加\n时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     page.close()
     context.close()
