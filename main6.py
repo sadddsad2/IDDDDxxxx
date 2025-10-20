@@ -7,8 +7,8 @@ import requests
 from datetime import datetime
 
 # 配置变量（优先读取环境变量，不存在则使用默认值）
-NVPW = os.getenv("NVPW", "xxx@koyeb.nyc.mn xxxx")  # 格式: 账号 密码
-NVURL = os.getenv("NVURL", "")
+NVPW = os.getenv("NVPW", "xxx@xx.com xxxx")  # 格式: 账号 密码
+NVURL = os.getenv("NVURL", "https://air.nvidia.com/simulations/2xfxxx1f-dx74-1e1a-1xx1-131x0xxfxx11")
 COOKIES_FILE = os.getenv("COOKIES_FILE", "nvidia_cookies.json")
 TG_CONFIG = os.getenv("TG", "")  # 格式: ID  TOKEN
 
