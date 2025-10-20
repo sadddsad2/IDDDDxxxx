@@ -1,5 +1,7 @@
 name: nvidia-Keepalive
 on:
+  schedule:
+    - cron: '0 19 */5 * *'
   workflow_dispatch:
     inputs:
       website_url:
@@ -146,3 +148,26 @@ jobs:
       with:
         path: ~/.cache/ms-playwright
         key: ${{ runner.os }}-playwright-${{ hashFiles('**/playwright.version') }}
+    
+    - name: Record execution timestamp and status (always runs)
+      if: always()
+      run: |
+        CURRENT_TIME=$(date '+%Y-%m-%d %H:%M:%S')
+        # 判断前面的步骤是否成功，通过检查上一个主要步骤的结果
+        if [ "${{ job.status }}" == "success" ]; then
+          STATUS="✓ Success"
+        else
+          STATUS="✗ Failed"
+        fi
+        echo "[$CURRENT_TIME] $STATUS" >> time.txt
+        echo "Updated time.txt:"
+        cat time.txt
+    
+    - name: Commit and push timestamp
+      if: always()
+      run: |
+        git config user.name "GitHub Action"
+        git config user.email "action@github.com"
+        git add time.txt
+        git commit -m "[${{ job.status }}] Update execution timestamp: $(date '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
+        git push || echo "Push failed, but recording timestamp locally"
