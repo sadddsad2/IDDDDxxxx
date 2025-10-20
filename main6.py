@@ -10,7 +10,7 @@ from datetime import datetime
 NVPW = os.getenv("NVPW", "xxx@ny.com xxxx")  # 格式: 账号 密码
 NVURL = os.getenv("NVURL", "https://air.nvidia.com/simulations/xxfcxxf-d3xx-4x1a-9ce1-233exxxfdfxx")
 COOKIES_FILE = os.getenv("COOKIES_FILE", "nvidia_cookies.json")
-TG_CONFIG = os.getenv("TG", "")  # 格式: ID  TOKEN
+TG_CONFIG = os.getenv("TG", "")  # 格式: ID TOKEN (一个空格)
 
 
 def send_tg_notification(message: str) -> None:
@@ -19,12 +19,12 @@ def send_tg_notification(message: str) -> None:
         print("TG_CONFIG 未设置，跳过发送通知")
         return
     
-    if "  " not in TG_CONFIG:
-        print(f"TG_CONFIG 格式错误，应该是 'ID  TOKEN'，当前值: {TG_CONFIG}")
+    if " " not in TG_CONFIG:
+        print(f"TG_CONFIG 格式错误，应该是 'ID TOKEN'，当前值: {TG_CONFIG}")
         return
     
     try:
-        parts = TG_CONFIG.split("  ", 1)
+        parts = TG_CONFIG.split(" ", 1)
         chat_id = parts[0].strip()
         token = parts[1].strip()
         
@@ -37,16 +37,16 @@ def send_tg_notification(message: str) -> None:
         }
         response = requests.post(url, json=data, timeout=5)
         if response.status_code == 200:
-            print(f"✓ TG通知已发送成功")
+            print(f"? TG通知已发送成功")
         else:
-            print(f"✗ TG通知发送失败: HTTP {response.status_code}")
+            print(f"? TG通知发送失败: HTTP {response.status_code}")
             print(f"  响应: {response.text}")
     except requests.exceptions.Timeout:
-        print(f"✗ TG通知发送超时（无法连接到api.telegram.org）")
+        print(f"? TG通知发送超时（无法连接到api.telegram.org）")
     except requests.exceptions.ConnectionError:
-        print(f"✗ TG通知发送失败（网络连接错误）")
+        print(f"? TG通知发送失败（网络连接错误）")
     except Exception as e:
-        print(f"✗ 发送TG通知错误: {e}")
+        print(f"? 发送TG通知错误: {e}")
 
 
 def save_cookies(context, filename=COOKIES_FILE) -> None:
@@ -133,7 +133,7 @@ def check_time_status(page) -> tuple[bool, str]:
         try:
             exact_match = page.get_by_text(target_text, exact=True)
             if exact_match.count() > 0:
-                print(f"✓ 方式1检测成功: 找到精确文本 '{target_text}'")
+                print(f"? 方式1检测成功: 找到精确文本 '{target_text}'")
                 return True, target_text
         except Exception as e:
             print(f"方式1检测: 未找到精确文本 - {e}")
@@ -143,7 +143,7 @@ def check_time_status(page) -> tuple[bool, str]:
             fuzzy_match = page.get_by_text("6 days 23 hours")
             if fuzzy_match.count() > 0:
                 time_text = fuzzy_match.first.inner_text()
-                print(f"✓ 方式2检测成功: 找到匹配文本 '{time_text}'")
+                print(f"? 方式2检测成功: 找到匹配文本 '{time_text}'")
                 return True, time_text
         except Exception as e:
             print(f"方式2检测: 未找到匹配文本 - {e}")
@@ -153,7 +153,7 @@ def check_time_status(page) -> tuple[bool, str]:
             timer_element = page.locator("app-sim-timer")
             if timer_element.count() > 0:
                 timer_text = timer_element.inner_text()
-                print(f"✓ 方式3检测: Timer元素内容 '{timer_text}'")
+                print(f"? 方式3检测: Timer元素内容 '{timer_text}'")
                 # 检查是否包含 "6 days"
                 if "6 days" in timer_text and "23 hours" in timer_text:
                     return True, timer_text
@@ -169,7 +169,7 @@ def check_time_status(page) -> tuple[bool, str]:
                 for match in matches:
                     days, hours, minutes = match
                     time_str = f"{days} days {hours} hours {minutes} minutes"
-                    print(f"✓ 方式4检测: 找到时间文本 '{time_str}'")
+                    print(f"? 方式4检测: 找到时间文本 '{time_str}'")
                     # 检查是否达到6天23小时
                     if int(days) >= 6 and int(hours) >= 23:
                         return True, time_str
@@ -177,7 +177,7 @@ def check_time_status(page) -> tuple[bool, str]:
             print(f"方式4检测: 正则匹配失败 - {e}")
         
         # 如果所有方式都未检测到，返回失败
-        print("✗ 所有检测方式均未找到目标时间")
+        print("? 所有检测方式均未找到目标时间")
         return False, "未检测到"
         
     except Exception as e:
@@ -233,7 +233,7 @@ def run(playwright: Playwright) -> None:
     
     if not login_success:
         print("登陆失败，程序退出")
-        send_tg_notification(f"❌ NVIDIA Air 登陆失败\n时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        send_tg_notification(f"? NVIDIA Air 登陆失败\n时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         page.close()
         context.close()
         browser.close()
@@ -247,9 +247,9 @@ def run(playwright: Playwright) -> None:
     print("\n=== 检查初始时间状态 ===")
     initial_success, initial_time = check_time_status(page)
     if initial_success:
-        print(f"✓ 初始检测: 时间已经是最大值 ({initial_time})")
+        print(f"? 初始检测: 时间已经是最大值 ({initial_time})")
         send_tg_notification(
-            f"✅ NVIDIA Air 登陆成功\n"
+            f"? NVIDIA Air 登陆成功\n"
             f"时间状态: 已是最大值\n"
             f"当前时间: {initial_time}\n"
             f"检测时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
@@ -273,7 +273,7 @@ def run(playwright: Playwright) -> None:
             # 每次尝试前检查一次时间状态
             success, current_time = check_time_status(page)
             if success:
-                print(f"✓ 第 {attempts + 1} 次尝试前检测: 时间已增加到 {current_time}")
+                print(f"? 第 {attempts + 1} 次尝试前检测: 时间已增加到 {current_time}")
                 time_added = True
                 break
             
@@ -286,19 +286,19 @@ def run(playwright: Playwright) -> None:
             page.wait_for_timeout(2000)  # 等待处理
             
             attempts += 1
-            print(f"✓ 第 {attempts} 次添加时间操作完成")
+            print(f"? 第 {attempts} 次添加时间操作完成")
             
             # 每次点击后检查时间状态
             success, current_time = check_time_status(page)
             if success:
-                print(f"✓ 第 {attempts} 次尝试后检测: 时间已增加到 {current_time}")
+                print(f"? 第 {attempts} 次尝试后检测: 时间已增加到 {current_time}")
                 time_added = True
                 break
             else:
                 print(f"第 {attempts} 次尝试后: 时间尚未达到目标 ({current_time})")
             
         except Exception as e:
-            print(f"✗ 第 {attempts + 1} 次尝试出错: {e}")
+            print(f"? 第 {attempts + 1} 次尝试出错: {e}")
             attempts += 1
     
     # 达到最大尝试次数后，最后再检查一次
@@ -308,10 +308,10 @@ def run(playwright: Playwright) -> None:
         final_success, final_time = check_time_status(page)
         
         if final_success:
-            print(f"✓ 最终检测成功: 时间已增加到 {final_time}")
+            print(f"? 最终检测成功: 时间已增加到 {final_time}")
             time_added = True
         else:
-            print(f"✗ 最终检测: 时间未达到目标 ({final_time})")
+            print(f"? 最终检测: 时间未达到目标 ({final_time})")
     
     # 发送通知（无论成功失败都发送）
     current_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -320,7 +320,7 @@ def run(playwright: Playwright) -> None:
         # 获取最终时间状态
         _, final_time_text = check_time_status(page)
         notification_message = (
-            f"✅ NVIDIA Air 登陆成功\n"
+            f"? NVIDIA Air 登陆成功\n"
             f"时间状态: 已增加到最大值\n"
             f"当前时间: {final_time_text}\n"
             f"尝试次数: {attempts}/{max_attempts}\n"
@@ -332,7 +332,7 @@ def run(playwright: Playwright) -> None:
         # 获取当前时间状态
         _, current_time_text = check_time_status(page)
         notification_message = (
-            f"⚠️ NVIDIA Air 登陆成功\n"
+            f"?? NVIDIA Air 登陆成功\n"
             f"时间状态: 尝试增加但未达到最大值\n"
             f"当前时间: {current_time_text}\n"
             f"尝试次数: {attempts}/{max_attempts}\n"
