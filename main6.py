@@ -141,7 +141,7 @@ def run(playwright: Playwright) -> None:
     while attempts < max_attempts:
         try:
             # 检查页面中是否已存在"6 days 23 hours 59 minutes"
-            target_text = page.get_by_text("6 days 23 hours 59 minutes", exact=True)
+            target_text = page.get_by_text("6 days 23 hours 59 minutes", exact=False)
             if target_text.count() > 0:
                 print("时间已增加到 6 days 23 hours 59 minutes")
                 break
