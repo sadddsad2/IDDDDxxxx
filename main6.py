@@ -121,14 +121,15 @@ def try_cookie_login(page) -> bool:
 
 def check_time_status(page) -> tuple[bool, str]:
     """
-    检查时间状态，返回 (是否成功, 当前时间文本)
+    检查时间状态，返回 (是否达到最大值, 当前时间文本)
+    只有达到 6 days 23 hours 59 minutes 才算成功
     使用多种方式检测时间增加是否成功
     """
     try:
         # 等待页面稳定
         page.wait_for_timeout(2000)
         
-        # 方式1: 精确匹配目标文本
+        # 方式1: 精确匹配目标文本 "6 days 23 hours 59 minutes"
         target_text = "6 days 23 hours 59 minutes"
         try:
             exact_match = page.get_by_text(target_text, exact=True)
@@ -138,9 +139,9 @@ def check_time_status(page) -> tuple[bool, str]:
         except Exception as e:
             print(f"方式1检测: 未找到精确文本 - {e}")
         
-        # 方式2: 模糊匹配 (6 days 23 hours)
+        # 方式2: 模糊匹配 (6 days 23 hours 59)
         try:
-            fuzzy_match = page.get_by_text("6 days 23 hours")
+            fuzzy_match = page.get_by_text("6 days 23 hours 59")
             if fuzzy_match.count() > 0:
                 time_text = fuzzy_match.first.inner_text()
                 print(f"? 方式2检测成功: 找到匹配文本 '{time_text}'")
@@ -154,8 +155,8 @@ def check_time_status(page) -> tuple[bool, str]:
             if timer_element.count() > 0:
                 timer_text = timer_element.inner_text()
                 print(f"? 方式3检测: Timer元素内容 '{timer_text}'")
-                # 检查是否包含 "6 days"
-                if "6 days" in timer_text and "23 hours" in timer_text:
+                # 必须是 6 days 23 hours 59 minutes
+                if "6 days" in timer_text and "23 hours" in timer_text and "59" in timer_text:
                     return True, timer_text
         except Exception as e:
             print(f"方式3检测: 未找到timer元素 - {e}")
@@ -170,14 +171,24 @@ def check_time_status(page) -> tuple[bool, str]:
                     days, hours, minutes = match
                     time_str = f"{days} days {hours} hours {minutes} minutes"
                     print(f"? 方式4检测: 找到时间文本 '{time_str}'")
-                    # 检查是否达到6天23小时
-                    if int(days) >= 6 and int(hours) >= 23:
+                    # 必须是 6 天 23 小时 59 分钟
+                    if int(days) == 6 and int(hours) == 23 and int(minutes) == 59:
                         return True, time_str
         except Exception as e:
             print(f"方式4检测: 正则匹配失败 - {e}")
         
-        # 如果所有方式都未检测到，返回失败
-        print("? 所有检测方式均未找到目标时间")
+        # 如果所有方式都未检测到最大时间，尝试获取当前时间
+        try:
+            timer_element = page.locator("app-sim-timer")
+            if timer_element.count() > 0:
+                current_time = timer_element.inner_text().strip()
+                print(f"当前时间: {current_time}")
+                return False, current_time
+        except:
+            pass
+        
+        # 所有方式都未检测到
+        print("? 未检测到最大时间 (6 days 23 hours 59 minutes)")
         return False, "未检测到"
         
     except Exception as e:
@@ -246,12 +257,14 @@ def run(playwright: Playwright) -> None:
     # 检查初始时间状态
     print("\n=== 检查初始时间状态 ===")
     initial_success, initial_time = check_time_status(page)
+    print(f"初始时间: {initial_time}")
+    
     if initial_success:
-        print(f"? 初始检测: 时间已经是最大值 ({initial_time})")
+        print(f"? 初始检测: 时间已经是最大值 (6 days 23 hours 59 minutes)")
         send_tg_notification(
             f"? NVIDIA Air 登陆成功\n"
             f"时间状态: 已是最大值\n"
-            f"当前时间: {initial_time}\n"
+            f"初始时间: {initial_time}\n"
             f"检测时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         )
         page.close()
@@ -259,24 +272,18 @@ def run(playwright: Playwright) -> None:
         browser.close()
         return
     
-    print(f"初始时间: {initial_time}，需要增加时间")
+    print(f"初始时间未达到最大值，需要增加时间")
     
     # 循环执行添加时间，最多尝试6次
     max_attempts = 6
     attempts = 0
     time_added = False
+    final_time = initial_time  # 记录最终时间
     
     print(f"\n=== 开始尝试增加时间（最多{max_attempts}次）===")
     
     while attempts < max_attempts:
         try:
-            # 每次尝试前检查一次时间状态
-            success, current_time = check_time_status(page)
-            if success:
-                print(f"? 第 {attempts + 1} 次尝试前检测: 时间已增加到 {current_time}")
-                time_added = True
-                break
-            
             # 点击选项菜单
             page.locator("app-sim-timer app-options-menu").get_by_role("img").click()
             page.wait_for_timeout(500)  # 等待菜单显示
@@ -290,12 +297,14 @@ def run(playwright: Playwright) -> None:
             
             # 每次点击后检查时间状态
             success, current_time = check_time_status(page)
+            final_time = current_time  # 更新最终时间
+            
             if success:
-                print(f"? 第 {attempts} 次尝试后检测: 时间已增加到 {current_time}")
+                print(f"? 第 {attempts} 次尝试后检测: 时间已增加到最大值 ({current_time})")
                 time_added = True
                 break
             else:
-                print(f"第 {attempts} 次尝试后: 时间尚未达到目标 ({current_time})")
+                print(f"第 {attempts} 次尝试后: 当前时间 {current_time}，继续尝试...")
             
         except Exception as e:
             print(f"? 第 {attempts + 1} 次尝试出错: {e}")
@@ -308,35 +317,33 @@ def run(playwright: Playwright) -> None:
         final_success, final_time = check_time_status(page)
         
         if final_success:
-            print(f"? 最终检测成功: 时间已增加到 {final_time}")
+            print(f"? 最终检测成功: 时间已增加到最大值 ({final_time})")
             time_added = True
         else:
-            print(f"? 最终检测: 时间未达到目标 ({final_time})")
+            print(f"? 最终检测: 时间未达到最大值 ({final_time})")
     
     # 发送通知（无论成功失败都发送）
     current_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
     if time_added:
-        # 获取最终时间状态
-        _, final_time_text = check_time_status(page)
         notification_message = (
-            f"✅ NVIDIA Air 登陆成功\n"
-            f"时间状态: 已增加到最大值\n"
-            f"当前时间: {final_time_text}\n"
+            f"? NVIDIA Air 时间增加成功\n"
+            f"━━━━━━━━━━━━━━━━\n"
+            f"初始时间: {initial_time}\n"
+            f"增加后时间: {final_time}\n"
             f"尝试次数: {attempts}/{max_attempts}\n"
             f"执行时间: {current_datetime}"
         )
         print(f"\n{notification_message}")
         send_tg_notification(notification_message)
     else:
-        # 获取当前时间状态
-        _, current_time_text = check_time_status(page)
         notification_message = (
-            f"✅ NVIDIA Air 登陆成功\n"
-            f"时间状态: 尝试增加但未达到最大值\n"
-            f"当前时间: {current_time_text}\n"
+            f"?? NVIDIA Air 时间未达到最大值\n"
+            f"━━━━━━━━━━━━━━━━\n"
+            f"初始时间: {initial_time}\n"
+            f"当前时间: {final_time}\n"
             f"尝试次数: {attempts}/{max_attempts}\n"
-            f"建议: 请手动登录网站检查\n"
+            f"建议: 请手动登录检查\n"
             f"执行时间: {current_datetime}"
         )
         print(f"\n{notification_message}")
